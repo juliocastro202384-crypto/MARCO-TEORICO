@@ -109,46 +109,44 @@ CSS = """
         box-shadow: 0 2px 16px rgba(0,0,0,0.05);
     }
     .desc-title {
-        font-size: 1.3rem;
+        font-size: 1.4rem;
         font-weight: 800;
         color: #1e3a6e;
-        margin-bottom: 8px;
-        border-bottom: 3px solid #2563eb;
+        margin-bottom: 4px;
         padding-bottom: 10px;
+        border-bottom: 3px solid #2563eb;
         display: inline-block;
     }
     .desc-subtitle {
-        font-size: 0.8rem;
-        color: #64748b;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-bottom: 24px;
-        font-weight: 600;
+        font-size: 0.9rem;
+        color: #475569;
+        margin: 12px 0 24px 0;
+        line-height: 1.6;
+        font-style: italic;
     }
     .desc-block {
         background: #f8faff;
         border-radius: 12px;
-        padding: 20px 24px;
-        margin-bottom: 16px;
+        padding: 18px 22px;
+        margin-bottom: 14px;
         border-left: 4px solid #2563eb;
     }
     .desc-block-title {
         font-size: 1rem;
         font-weight: 700;
         color: #1e3a6e;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
     .desc-block ul {
         margin: 0;
         padding-left: 20px;
         color: #334155;
         font-size: 0.92rem;
-        line-height: 1.8;
+        line-height: 1.85;
     }
-    .desc-block-green { border-left-color: #059669; }
-    .desc-block-orange { border-left-color: #d97706; }
-    .desc-block-purple { border-left-color: #7c3aed; }
-    .desc-block-teal { border-left-color: #0891b2; }
+    .desc-block-green { border-left-color: #059669; background: #f0fdf4; }
+    .desc-block-orange { border-left-color: #d97706; background: #fffbeb; }
+    .desc-block-purple { border-left-color: #7c3aed; background: #faf5ff; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -194,11 +192,10 @@ for col, (num, lbl) in zip([m1,m2,m3,m4,m5], metricas):
 
 st.markdown(f'<div class="info-box">📌 Completa el formulario, ingresa tu API Key de Anthropic y presiona el boton. Fuentes del periodo <strong>{RANGO}</strong> (ultimos 5 anios). Teorias clasicas sin restriccion de anio.</div>', unsafe_allow_html=True)
 
-st.markdown("""
+desc_html = f"""
 <div class="desc-section">
     <div class="desc-title">¿Que genera esta herramienta?</div>
     <p class="desc-subtitle">El marco teorico es uno de los capitulos mas exigentes de cualquier investigacion academica. Esta herramienta lo genera automaticamente, incluyendo:</p>
-
     <div class="desc-block">
         <div class="desc-block-title">📌 Por cada variable o categoria</div>
         <ul>
@@ -207,14 +204,12 @@ st.markdown("""
             <li>Dimensiones (cuantitativo/mixto) o categorias (cualitativo) con indicadores</li>
         </ul>
     </div>
-
     <div class="desc-block desc-block-green">
         <div class="desc-block-title">📖 Glosario</div>
         <ul>
             <li>12 terminos basicos con definicion academica y cita formal</li>
         </ul>
     </div>
-
     <div class="desc-block desc-block-orange">
         <div class="desc-block-title">📚 Antecedentes (todos del periodo {RANGO})</div>
         <ul>
@@ -222,7 +217,6 @@ st.markdown("""
             <li>8 antecedentes nacionales del pais elegido con resumen/abstract completo</li>
         </ul>
     </div>
-
     <div class="desc-block desc-block-purple">
         <div class="desc-block-title">📄 Salida</div>
         <ul>
@@ -231,7 +225,8 @@ st.markdown("""
         </ul>
     </div>
 </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(desc_html, unsafe_allow_html=True)
 
 if generar:
     if not api_key:
