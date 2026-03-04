@@ -100,53 +100,6 @@ CSS = """
         margin-top: 8px;
         text-align: center;
     }
-    .desc-section {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 36px 40px;
-        margin: 28px 0;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.05);
-    }
-    .desc-title {
-        font-size: 1.4rem;
-        font-weight: 800;
-        color: #1e3a6e;
-        margin-bottom: 4px;
-        padding-bottom: 10px;
-        border-bottom: 3px solid #2563eb;
-        display: inline-block;
-    }
-    .desc-subtitle {
-        font-size: 0.9rem;
-        color: #475569;
-        margin: 12px 0 24px 0;
-        line-height: 1.6;
-        font-style: italic;
-    }
-    .desc-block {
-        background: #f8faff;
-        border-radius: 12px;
-        padding: 18px 22px;
-        margin-bottom: 14px;
-        border-left: 4px solid #2563eb;
-    }
-    .desc-block-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #1e3a6e;
-        margin-bottom: 8px;
-    }
-    .desc-block ul {
-        margin: 0;
-        padding-left: 20px;
-        color: #334155;
-        font-size: 0.92rem;
-        line-height: 1.85;
-    }
-    .desc-block-green { border-left-color: #059669; background: #f0fdf4; }
-    .desc-block-orange { border-left-color: #d97706; background: #fffbeb; }
-    .desc-block-purple { border-left-color: #7c3aed; background: #faf5ff; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -192,41 +145,35 @@ for col, (num, lbl) in zip([m1,m2,m3,m4,m5], metricas):
 
 st.markdown(f'<div class="info-box">📌 Completa el formulario, ingresa tu API Key de Anthropic y presiona el boton. Fuentes del periodo <strong>{RANGO}</strong> (ultimos 5 anios). Teorias clasicas sin restriccion de anio.</div>', unsafe_allow_html=True)
 
-desc_html = f"""
-<div class="desc-section">
-    <div class="desc-title">¿Que genera esta herramienta?</div>
-    <p class="desc-subtitle">El marco teorico es uno de los capitulos mas exigentes de cualquier investigacion academica. Esta herramienta lo genera automaticamente, incluyendo:</p>
-    <div class="desc-block">
-        <div class="desc-block-title">📌 Por cada variable o categoria</div>
-        <ul>
-            <li>Definiciones conceptuales por ≥5 autores (espanol, ingles, portugues, chino mandarin)</li>
-            <li>Teorias y modelos teoricos (minimo 3) con descripcion detallada</li>
-            <li>Dimensiones (cuantitativo/mixto) o categorias (cualitativo) con indicadores</li>
-        </ul>
-    </div>
-    <div class="desc-block desc-block-green">
-        <div class="desc-block-title">📖 Glosario</div>
-        <ul>
-            <li>12 terminos basicos con definicion academica y cita formal</li>
-        </ul>
-    </div>
-    <div class="desc-block desc-block-orange">
-        <div class="desc-block-title">📚 Antecedentes (todos del periodo {RANGO})</div>
-        <ul>
-            <li>10 antecedentes internacionales con resumen/abstract completo</li>
-            <li>8 antecedentes nacionales del pais elegido con resumen/abstract completo</li>
-        </ul>
-    </div>
-    <div class="desc-block desc-block-purple">
-        <div class="desc-block-title">📄 Salida</div>
-        <ul>
-            <li>Documento Word (.docx) descargable con estructura academica profesional</li>
-            <li>Citas en el formato de tu eleccion (APA 7, Vancouver, Chicago, etc.)</li>
-        </ul>
-    </div>
-</div>
-"""
-st.markdown(desc_html, unsafe_allow_html=True)
+st.markdown("---")
+st.markdown("### ¿Que genera esta herramienta?")
+st.markdown("*El marco teorico es uno de los capitulos mas exigentes de cualquier investigacion academica. Esta herramienta lo genera automaticamente, incluyendo:*")
+
+st.markdown("""
+**📌 Por cada variable o categoria:**
+- Definiciones conceptuales por ≥5 autores (espanol, ingles, portugues, chino mandarin)
+- Teorias y modelos teoricos (minimo 3) con descripcion detallada
+- Dimensiones (cuantitativo/mixto) o categorias (cualitativo) con indicadores
+""")
+
+st.markdown("""
+**📖 Glosario:**
+- 12 terminos basicos con definicion academica y cita formal
+""")
+
+st.markdown(f"""
+**📚 Antecedentes (todos del periodo {RANGO}):**
+- 10 antecedentes internacionales con resumen/abstract completo
+- 8 antecedentes nacionales del pais elegido con resumen/abstract completo
+""")
+
+st.markdown("""
+**📄 Salida:**
+- Documento Word (.docx) descargable con estructura academica profesional
+- Citas en el formato de tu eleccion (APA 7, Vancouver, Chicago, etc.)
+""")
+
+st.markdown("---")
 
 if generar:
     if not api_key:
