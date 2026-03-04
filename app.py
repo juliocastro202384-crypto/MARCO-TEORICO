@@ -107,7 +107,7 @@ st.markdown(CSS, unsafe_allow_html=True)
 with st.sidebar:
     st.markdown("## 📚 Marco Teorico IA")
     st.caption("Powered by Claude · Anthropic")
-    st.markdown(f'<div class="year-badge">📅 Fuentes: <strong>{RANGO}</strong> (ultimos 5 anios)<br>Teorias clasicas: sin restriccion de anio</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="year-badge">📅 Fuentes: <strong>{RANGO}</strong> (ultimos 5 años)<br>Teorias clasicas: sin restriccion de año</div>', unsafe_allow_html=True)
     st.markdown("---")
     api_key = st.text_input("API KEY DE ANTHROPIC", type="password", placeholder="sk-ant-...")
     st.caption("Obtener key en console.anthropic.com")
@@ -143,7 +143,7 @@ metricas = [("5+","Autores por Variable"),("10","Antecedentes Internacionales"),
 for col, (num, lbl) in zip([m1,m2,m3,m4,m5], metricas):
     col.markdown(f'<div class="metric-card"><div class="metric-num">{num}</div><div class="metric-label">{lbl}</div></div>', unsafe_allow_html=True)
 
-st.markdown(f'<div class="info-box">📌 Completa el formulario, ingresa tu API Key de Anthropic y presiona el boton. Fuentes del periodo <strong>{RANGO}</strong> (ultimos 5 anios). Teorias clasicas sin restriccion de anio.</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="info-box">📌 Completa el formulario, ingresa tu API Key de Anthropic y presiona el boton. Fuentes del periodo <strong>{RANGO}</strong> (ultimos 5 años). Teorias clasicas sin restriccion de año.</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 st.markdown("### ¿Que genera esta herramienta?")
@@ -191,7 +191,7 @@ if generar:
         prompt = f"""Eres un experto academico. Genera un marco teorico completo para:
 TEMA: {tema} | VARIABLES: {variables}
 ESTUDIO: {tipo_estudio} | DOC: {tipo_doc} | AREA: {area} | PAIS: {pais} | NORMA: {norma}
-PERIODO FUENTES: {RANGO} | TEORIAS CLASICAS: sin restriccion de anio
+PERIODO FUENTES: {RANGO} | TEORIAS CLASICAS: sin restriccion de año
 {secciones}
 ## ANTECEDENTES INTERNACIONALES (10, {RANGO}, formato {norma})
 ## ANTECEDENTES NACIONALES DE {pais} (8, {RANGO}, mismo formato)
