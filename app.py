@@ -126,49 +126,78 @@ CSS = """
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-# ── SYSTEM PROMPT BASE (anti-alucinacion + RAG) ──────────────────────────────
-SYSTEM_PROMPT = """Eres un AGENTE ACADÉMICO especializado en construir MARCO TEÓRICO para investigacion educativa (tesis, TFM, articulos). Tu prioridad es el rigor, la coherencia y la etica academica.
+# ── SYSTEM PROMPT v3 (cobertura total + anti-alucinacion + division en partes) ─
+SYSTEM_PROMPT = """Eres un AGENTE ACADEMICO EXPERTO en MARCO TEORICO para investigacion educativa (tesis/articulos). Tu objetivo es producir un marco teorico con rigor (coherencia logica, precision conceptual, sintesis critica y operacionalizacion), SIN inventar fuentes.
 
-REGLAS CRITICAS (OBLIGATORIAS):
-1. PROHIBIDO inventar: autores, años, titulos, editoriales, revistas, paginas, DOIs o URLs.
-2. SOLO puedes citar (APA 7) si el usuario te proporciono: (a) el texto exacto del fragmento, o (b) una ficha bibliografica completa + idea claramente atribuible.
-3. Si falta evidencia para una afirmacion clave, escribe [FUENTE PENDIENTE] y NO lo conviertas en cita.
-4. Cada parrafo debe tener: Idea central + sustento (fuente o razonamiento limitado) + implicacion para el estudio.
-5. Al final separa: "Referencias (APA 7) verificadas" (solo completas y provistas) y "Referencias sugeridas para buscar" [SUGERENCIA] (sin presentarlas como verificadas).
+REGLAS CRITICAS (CERO ALUCINACION):
+1. PROHIBIDO inventar: autores, anos, titulos, revistas, editoriales, paginas, DOIs, URLs, datos de estudios, instrumentos o resultados.
+2. SOLO puedes citar (APA 7) si el usuario te provee evidencia en FUENTES_PROVISTAS (fragmento textual o ficha completa + extracto).
+3. Si una afirmacion importante no tiene fuente: escribe [FUENTE PENDIENTE] y NO la conviertas en cita.
+4. Prohibido usar DOIs placeholder (ej. 10.5555/...) o referencias genericas.
+5. Cada parrafo debe aportar: (idea central) + (soporte: cita o explicacion limitada) + (implicacion para el estudio). Evita relleno/repeticion.
+6. Al final separa: A) Referencias verificadas (APA 7) = solo las completas y provistas. B) Referencias sugeridas para buscar [SUGERENCIA] = NO presentarlas como verificadas.
 
-MODOS DE TRABAJO:
-- ESTRICTO (por defecto): si no hay fuentes provistas, entrega estructura + [FUENTE PENDIENTE] + plan de busqueda. No redactas con citas inventadas.
-- BORRADOR: redactas texto conceptual sin citas, marcado como "Borrador sin soporte", y propones fuentes a buscar [SUGERENCIA].
+MODOS:
+- ESTRICTO (por defecto): si faltan fuentes, redactas la estructura marcando [FUENTE PENDIENTE] donde corresponda, sin inventar citas.
+- BORRADOR: redactas conceptualizaciones sin citas, rotulandolas "BORRADOR SIN SOPORTE", sin incluir "Referencias verificadas".
 
-FUENTES: Solo usas lo que venga en el bloque <<<FUENTES_PROVISTAS_POR_USUARIO>>>. Si esta vacio o insuficiente, declaralo y propone que recuperar.
+FUENTES: Trabajas unicamente con el bloque FUENTES_PROVISTAS. Si esta vacio, declaralo y marca [FUENTE PENDIENTE] en todo lo que necesitaria cita.
 
-ESTRUCTURA DE SALIDA OBLIGATORIA:
-1. Indice propuesto del marco teorico
-2. Marco conceptual y definiciones
-   2.1 Constructo 1: a) Definiciones (con citas SOLO si hay fuente) b) Sintesis critica c) Definicion integradora propia d) Implicacion para el estudio
-   2.2 Constructo 2 ...
-3. Teorias/modelos que sustentan el estudio (solo si hay soporte; si no, [FUENTE PENDIENTE])
-4. Antecedentes empiricos: tabla (Autor/año | contexto | metodo | muestra | hallazgos | limitaciones | aporte) + sintesis integradora. Si faltan: [NO HAY EVIDENCIA EN FUENTES_PROVISTAS] + terminos de busqueda sugeridos.
+COBERTURA TOTAL (ANTI-INFORME INCOMPLETO):
+- Debes desarrollar TODAS las VARIABLES/CONSTRUCTOS listadas, en el orden dado.
+- PROHIBIDO detenerte tras la primera variable.
+- Si faltan fuentes para una variable, igual incluye: definicion integradora + propuesta de dimensiones/indicadores (marcando [FUENTE PENDIENTE]).
+
+CONTROL DE LONGITUD (SI NO CABE, DIVIDE):
+- Si no puedes terminar todo en una sola respuesta, divide en PARTE 1/N, PARTE 2/N, etc.
+- Al final de cada parte escribe EXACTAMENTE: CONTINUAR CON: [lista de variables y secciones pendientes]
+- NO escribas conclusiones hasta la ultima parte.
+
+MODO COMPACTO (para 3+ variables):
+- Max. 2 definiciones por variable.
+- Sintesis critica: 5-7 lineas.
+- Definicion integradora: 4-6 lineas.
+- Tabla: 2-3 dimensiones, 3-5 indicadores por dimension.
+- Prioridad absoluta: completar todas las variables.
+
+FORMATO OBLIGATORIO DE SALIDA:
+0. Supuestos de trabajo (solo si faltan datos del usuario)
+1. Indice propuesto del marco teorico (4-7 secciones)
+2. Marco conceptual y definiciones (por variable/constructo)
+   2.1 VARIABLE 1
+       (1) Delimitacion conceptual (que incluye / que excluye)
+       (2) Definiciones academicas (max. 2) [solo con cita si hay fuente]
+       (3) Sintesis critica (similitudes, diferencias, tensiones, limitaciones)
+       (4) Definicion integradora propia (derivada de 2 y 3)
+       (5) Implicacion para el estudio (como se observara/medira en tu contexto)
+       (6) Tabla: Dimensiones e indicadores
+   2.2 VARIABLE 2 (mismo esquema) ... hasta terminar TODAS
+3. Teorias/modelos que sustentan el estudio [FUENTE PENDIENTE si no hay soporte]
+4. Antecedentes empiricos
+   4.1 Tabla: Autor/ano | contexto | metodo | muestra | hallazgos | limitaciones | aporte
+   4.2 Sintesis integradora
+   Si no hay estudios: [NO HAY EVIDENCIA EN FUENTES_PROVISTAS] + terminos de busqueda sugeridos
 5. Operacionalizacion segun enfoque:
-   - Cuantitativo: Variable → Dimension → Indicador → Ejemplo item → Escala sugerida
-   - Cualitativo: Categoria → Subcategoria → Evidencias → Preguntas guia
-   - Mixto: ambas + integracion
+   Cuantitativo: Variable -> Definicion operacional -> Dimensiones -> Indicadores -> Ejemplos de items -> Escala sugerida
+   Cualitativo: Categoria -> Subcategoria -> Evidencias -> Preguntas guia -> Fuentes de datos
+   Mixto: ambas + como se integran
 6. Vacios de investigacion que el estudio atiende (2-5 puntos)
 7. Riesgos de validez / limitaciones del marco teorico (2-5 puntos)
-8. Referencias (APA 7) verificadas
-9. Referencias sugeridas para buscar [SUGERENCIA]
+8. COBERTURA FINAL (obligatorio):
+   - Variables solicitadas: [...]
+   - Variables desarrolladas: [...]
+   - Variables pendientes (si hay): [...]
+   - Razon: (limite de salida / faltan fuentes / faltan datos)
+9. Referencias (APA 7) verificadas (solo las completas provistas)
+10. Referencias sugeridas para buscar [SUGERENCIA] (sin fingir verificacion)"""
 
-CHECKLIST ANTI-ALUCINACION (aplica antes de responder):
-- ¿Mencionne algun autor/año que NO este en FUENTES_PROVISTAS? Si si, moverlo a [SUGERENCIA] o eliminar.
-- ¿Puse DOIs/URLs? Solo si el usuario los dio.
-- ¿Cada afirmacion fuerte tiene soporte? Si no, marcar [FUENTE PENDIENTE].
-- ¿Incluí operacionalizacion/categorias segun enfoque? Si no, agregar."""
-
+# ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 📚 Marco Teorico IA")
-    st.caption("Powered by Claude · Anthropic")
+    st.caption("Powered by Claude · Anthropic · v3")
     st.markdown(f'<div class="year-badge">📅 Fuentes: <strong>{RANGO}</strong> (últimos 5 años)<br>Teorías clásicas: sin restricción de año</div>', unsafe_allow_html=True)
     st.markdown("---")
+
     api_key = st.text_input("API KEY DE ANTHROPIC", type="password", placeholder="sk-ant-...")
     st.caption("Obtener key en console.anthropic.com")
     st.markdown("---")
@@ -177,7 +206,7 @@ with st.sidebar:
         "MODO DE TRABAJO",
         ["ESTRICTO (solo fuentes provistas)", "BORRADOR (sugiere bibliografía)"],
         index=0,
-        help="ESTRICTO: no inventa citas. BORRADOR: genera texto y sugiere fuentes a buscar."
+        help="ESTRICTO: no inventa citas. BORRADOR: genera texto y sugiere fuentes [SUGERENCIA]."
     )
     modo_tag = "ESTRICTO" if "ESTRICTO" in modo else "BORRADOR"
     if modo_tag == "ESTRICTO":
@@ -186,10 +215,15 @@ with st.sidebar:
         st.markdown('<div class="mode-borrador">✏️ MODO BORRADOR — sugiere fuentes</div>', unsafe_allow_html=True)
 
     st.markdown("---")
-    tema = st.text_area("TEMA / TÍTULO DE INVESTIGACIÓN", placeholder="Ej: Impacto del uso de TIC en el aprendizaje matemático en secundaria", height=80)
-    problema = st.text_area("PROBLEMA (1 párrafo)", placeholder="Describe brevemente el problema de investigación...", height=80)
-    objetivo = st.text_input("OBJETIVO GENERAL", placeholder="Ej: Determinar la relación entre...")
-    variables = st.text_area("VARIABLES / CONSTRUCTOS", placeholder="Ej: V1=uso de TIC, V2=aprendizaje matemático", height=60)
+    tema = st.text_area("TEMA / TÍTULO", placeholder="Ej: Impacto del uso de TIC en el aprendizaje matemático en secundaria", height=75)
+    problema = st.text_area("PROBLEMA (1 párrafo)", placeholder="Describe brevemente el problema de investigación...", height=75)
+    objetivo = st.text_input("OBJETIVO GENERAL", placeholder="Ej: Determinar la relación entre uso de TIC y aprendizaje...")
+    obj_esp = st.text_area("OBJETIVOS ESPECÍFICOS (uno por línea)", placeholder="1. Identificar...
+2. Analizar...
+3. Establecer...", height=80)
+    variables = st.text_area("VARIABLES / CONSTRUCTOS", placeholder="V1: uso de TIC
+V2: aprendizaje matemático
+V3: motivación", height=80)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -200,24 +234,26 @@ with st.sidebar:
     area = st.selectbox("ÁREA", ["Educación / Pedagogía", "Psicología", "Administración", "Salud / Medicina", "Ingeniería", "Ciencias Sociales", "Economía", "Derecho", "Comunicación"])
     col3, col4 = st.columns(2)
     with col3:
-        pais = st.text_input("PAÍS", value="Perú")
+        pais = st.text_input("PAÍS / CONTEXTO", value="Perú")
     with col4:
         norma = st.selectbox("NORMA", ["APA 7a ed.", "Vancouver", "Chicago", "ISO 690", "MLA"])
 
+    poblacion = st.text_input("POBLACIÓN / MUESTRA", placeholder="Ej: 120 estudiantes de 3° secundaria")
+
     fuentes = st.text_area(
-        "FUENTES PROVISTAS (pega aquí tus fragmentos o fichas)",
-        placeholder="[Fuente 1: Autor, Año, Título. Fragmento o idea resumida]\n[Fuente 2: ...]\n(Dejar vacío para modo ESTRICTO sin fuentes)",
-        height=150,
-        help="Pega fragmentos reales de tus PDFs o fichas bibliográficas completas. El agente SOLO citará lo que pongas aquí."
+        "FUENTES PROVISTAS (pega fragmentos o fichas)",
+        placeholder="[Fuente 1: Autor, Año, Título.\nFragmento pegado o ficha + extracto]\n[Fuente 2: ...]\n\nDejar vacío = modo sin citas reales",
+        height=160,
+        help="El agente SOLO cita lo que pongas aquí. Mínimo 1 fragmento por variable si quieres citas reales."
     )
 
     st.markdown("---")
-    generar = st.button("⚡ GENERAR MARCO TEÓRICO")
+    generar = st.button("⚡ GENERAR MARCO TEÓRICO COMPLETO")
 
 # ── HERO ──────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="hero-box">
-    <div class="hero-badge">Agente Académico con IA · Rigor Anti-Alucinación</div>
+    <div class="hero-badge">Agente Académico v3 · Anti-Alucinación · Cobertura Total</div>
     <div class="hero-title">Generador de Marco Teórico</div>
     <div class="hero-sub">Tesis · Artículos Científicos · TFM · Monografías</div>
     <div class="hero-powered">Powered by Claude Anthropic | Fuentes {RANGO}</div>
@@ -225,32 +261,26 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 m1, m2, m3, m4, m5 = st.columns(5)
-metricas = [("RAG","Anti-Alucinación"),("APA 7","Citas Verificadas"),("2 Modos","Estricto/Borrador"),("9","Secciones Salida"),(".docx","Descargable")]
+metricas = [("v3","Anti-Alucinación"),("APA 7","Refs Verificadas"),("10","Secciones"),("2","Modos"),(".docx","Descargable")]
 for col, (num, lbl) in zip([m1,m2,m3,m4,m5], metricas):
     col.markdown(f'<div class="metric-card"><div class="metric-num">{num}</div><div class="metric-label">{lbl}</div></div>', unsafe_allow_html=True)
 
-st.markdown(f'<div class="info-box">📌 Completa el formulario lateral, pega tus fuentes y presiona el botón. Modo <strong>{modo_tag}</strong> activado — período de búsqueda <strong>{RANGO}</strong>.</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="info-box">📌 Modo <strong>{modo_tag}</strong> activo. Período de antecedentes: <strong>{RANGO}</strong>. Completa el formulario lateral, pega tus fuentes y genera.</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 st.markdown("### ¿Qué genera esta herramienta?")
-st.markdown("*Marco teórico con rigor académico real. El agente no inventa citas — solo usa lo que tú provees como evidencia:*")
+st.markdown("*Marco teórico completo con rigor académico real, cobertura de todas las variables y sin inventar fuentes:*")
 st.markdown(f"""
-**🔒 Modo ESTRICTO (anti-alucinación):**
-- Solo cita autores/textos que tú pegues en "Fuentes Provistas"
-- Marca [FUENTE PENDIENTE] cuando no hay evidencia
-- Propone términos de búsqueda para lo que falta
+**🔒 Modo ESTRICTO:** Solo cita lo que tú pegues — marca [FUENTE PENDIENTE] donde falta evidencia
 
-**✏️ Modo BORRADOR:**
-- Genera texto conceptual completo
-- Marca sugerencias como [SUGERENCIA] (no como citas reales)
-- Ideal para tener una estructura inicial
+**✏️ Modo BORRADOR:** Genera texto completo marcando [SUGERENCIA] en bibliografía no provista
 
-**📐 Estructura de salida (9 secciones):**
-- Índice · Marco conceptual · Teorías · Antecedentes empíricos (tabla)
-- Operacionalización · Vacíos de investigación · Limitaciones
-- Referencias verificadas APA 7 · Referencias sugeridas
+**📐 Estructura de 10 secciones:**
+Supuestos · Índice · Marco conceptual por variable · Teorías · Antecedentes (tabla) · Operacionalización · Vacíos · Limitaciones · Cobertura final · Referencias APA 7
 
-**📄 Período de antecedentes:** {RANGO} (últimos 5 años) | Teorías clásicas: sin restricción
+**🛡️ Cobertura total:** Desarrolla TODAS las variables, divide en partes si es necesario
+
+**📅 Período antecedentes:** {RANGO} | Teorías clásicas: sin restricción de año
 """)
 st.markdown("---")
 
@@ -263,35 +293,43 @@ if generar:
     elif not variables:
         st.error("Ingresa al menos una variable o constructo.")
     else:
-        bloque_fuentes = f"""<<<FUENTES_PROVISTAS_POR_USUARIO>>>
-{fuentes if fuentes.strip() else "[BLOQUE VACÍO — no se proveyeron fuentes. Aplicar modo " + modo_tag + " sin citas reales.]"}
-<<<FIN_FUENTES_PROVISTAS_POR_USUARIO>>>"""
+        num_vars = len([v for v in variables.strip().split("\n") if v.strip()])
+        modo_compacto = "MODO COMPACTO ACTIVADO (hay 3+ variables): máx. 2 definiciones, síntesis 5-7 líneas, tabla 2-3 dimensiones. PRIORIDAD: completar todas las variables." if num_vars >= 3 else ""
+
+        bloque_fuentes = f"""<<<FUENTES_PROVISTAS>>>
+{fuentes.strip() if fuentes.strip() else "[BLOQUE VACIO — no se proveyeron fuentes. Aplicar modo " + modo_tag + ": marcar [FUENTE PENDIENTE] en todo lo que requiera cita.]"}
+<<<FIN_FUENTES_PROVISTAS>>>"""
 
         prompt = f"""MODO: {modo_tag}
+{modo_compacto}
 
 DATOS DEL ESTUDIO:
 - Tema/Título: {tema}
-- Problema: {problema if problema.strip() else "[No especificado — usa supuestos de trabajo]"}
-- Objetivo general: {objetivo if objetivo.strip() else "[No especificado]"}
-- Variables/Constructos: {variables}
+- Problema: {problema.strip() if problema.strip() else "[No especificado — crear Supuesto de trabajo]"}
+- Objetivo general: {objetivo.strip() if objetivo.strip() else "[No especificado]"}
+- Objetivos específicos:
+{obj_esp.strip() if obj_esp.strip() else "[No especificados]"}
+- VARIABLES/CONSTRUCTOS (desarrollar TODAS en orden):
+{variables.strip()}
 - Enfoque: {tipo_estudio}
 - Tipo de documento: {tipo_doc}
 - Área: {area}
 - País/contexto: {pais}
+- Población/muestra: {poblacion.strip() if poblacion.strip() else "[No especificada]"}
 - Norma de citación: {norma}
-- Período de antecedentes: {RANGO} (últimos 5 años; teorías clásicas sin restricción)
+- Período de antecedentes: {RANGO} (últimos 5 años; teorías clásicas: sin restricción de año)
 
 {bloque_fuentes}
 
-INSTRUCCIÓN:
-Genera el marco teórico completo siguiendo EXACTAMENTE la estructura de 9 secciones del sistema.
-- Aplica el checklist anti-alucinación antes de responder.
-- En modo ESTRICTO: no inventes ninguna cita. Usa [FUENTE PENDIENTE] donde falte evidencia.
-- En modo BORRADOR: genera texto completo pero marca [SUGERENCIA] en toda bibliografía no provista.
-- La operacionalización debe corresponder al enfoque {tipo_estudio}.
-- Mínimo 6,000 palabras en redacción académica formal en español."""
+INSTRUCCIÓN FINAL:
+1. Aplica el checklist anti-alucinación antes de responder.
+2. Desarrolla TODAS las variables listadas sin excepción. Si no cabes en una respuesta, divide en PARTE 1/N, PARTE 2/N, etc. y escribe "CONTINUAR CON: [pendientes]" al final de cada parte.
+3. Sigue el FORMATO OBLIGATORIO de 10 secciones (0 a 10).
+4. La operacionalización debe corresponder al enfoque {tipo_estudio}.
+5. Incluye la sección 8 COBERTURA FINAL con checklist de variables.
+6. Redacción académica formal en español. Mínimo 6,000 palabras en total."""
 
-        with st.spinner(f"Generando marco teórico en modo {modo_tag}... (puede tomar 3-5 minutos)"):
+        with st.spinner(f"⚡ Generando marco teórico completo en modo {modo_tag}... (3-5 min)"):
             try:
                 client = anthropic.Anthropic(api_key=api_key)
                 response = client.messages.create(
@@ -308,7 +346,7 @@ Genera el marco teórico completo siguiendo EXACTAMENTE la estructura de 9 secci
                 doc = Document()
                 doc.add_heading("MARCO TEÓRICO", 0)
                 doc.add_heading(tema, 1)
-                doc.add_paragraph(f"Modo: {modo_tag} | Enfoque: {tipo_estudio} | Norma: {norma} | Período: {RANGO}")
+                doc.add_paragraph(f"Modo: {modo_tag} | Enfoque: {tipo_estudio} | Norma: {norma} | Período: {RANGO} | País: {pais}")
                 doc.add_paragraph("")
                 for linea in contenido.split("\n"):
                     linea = linea.strip()
