@@ -100,119 +100,216 @@ CSS = """
         margin-top: 8px;
         text-align: center;
     }
+    .mode-estricto {
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 0.78rem;
+        color: #991b1b;
+        margin-top: 8px;
+        text-align: center;
+        font-weight: 700;
+    }
+    .mode-borrador {
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 0.78rem;
+        color: #92400e;
+        margin-top: 8px;
+        text-align: center;
+        font-weight: 700;
+    }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
+# ── SYSTEM PROMPT BASE (anti-alucinacion + RAG) ──────────────────────────────
+SYSTEM_PROMPT = """Eres un AGENTE ACADÉMICO especializado en construir MARCO TEÓRICO para investigacion educativa (tesis, TFM, articulos). Tu prioridad es el rigor, la coherencia y la etica academica.
+
+REGLAS CRITICAS (OBLIGATORIAS):
+1. PROHIBIDO inventar: autores, años, titulos, editoriales, revistas, paginas, DOIs o URLs.
+2. SOLO puedes citar (APA 7) si el usuario te proporciono: (a) el texto exacto del fragmento, o (b) una ficha bibliografica completa + idea claramente atribuible.
+3. Si falta evidencia para una afirmacion clave, escribe [FUENTE PENDIENTE] y NO lo conviertas en cita.
+4. Cada parrafo debe tener: Idea central + sustento (fuente o razonamiento limitado) + implicacion para el estudio.
+5. Al final separa: "Referencias (APA 7) verificadas" (solo completas y provistas) y "Referencias sugeridas para buscar" [SUGERENCIA] (sin presentarlas como verificadas).
+
+MODOS DE TRABAJO:
+- ESTRICTO (por defecto): si no hay fuentes provistas, entrega estructura + [FUENTE PENDIENTE] + plan de busqueda. No redactas con citas inventadas.
+- BORRADOR: redactas texto conceptual sin citas, marcado como "Borrador sin soporte", y propones fuentes a buscar [SUGERENCIA].
+
+FUENTES: Solo usas lo que venga en el bloque <<<FUENTES_PROVISTAS_POR_USUARIO>>>. Si esta vacio o insuficiente, declaralo y propone que recuperar.
+
+ESTRUCTURA DE SALIDA OBLIGATORIA:
+1. Indice propuesto del marco teorico
+2. Marco conceptual y definiciones
+   2.1 Constructo 1: a) Definiciones (con citas SOLO si hay fuente) b) Sintesis critica c) Definicion integradora propia d) Implicacion para el estudio
+   2.2 Constructo 2 ...
+3. Teorias/modelos que sustentan el estudio (solo si hay soporte; si no, [FUENTE PENDIENTE])
+4. Antecedentes empiricos: tabla (Autor/año | contexto | metodo | muestra | hallazgos | limitaciones | aporte) + sintesis integradora. Si faltan: [NO HAY EVIDENCIA EN FUENTES_PROVISTAS] + terminos de busqueda sugeridos.
+5. Operacionalizacion segun enfoque:
+   - Cuantitativo: Variable → Dimension → Indicador → Ejemplo item → Escala sugerida
+   - Cualitativo: Categoria → Subcategoria → Evidencias → Preguntas guia
+   - Mixto: ambas + integracion
+6. Vacios de investigacion que el estudio atiende (2-5 puntos)
+7. Riesgos de validez / limitaciones del marco teorico (2-5 puntos)
+8. Referencias (APA 7) verificadas
+9. Referencias sugeridas para buscar [SUGERENCIA]
+
+CHECKLIST ANTI-ALUCINACION (aplica antes de responder):
+- ¿Mencionne algun autor/año que NO este en FUENTES_PROVISTAS? Si si, moverlo a [SUGERENCIA] o eliminar.
+- ¿Puse DOIs/URLs? Solo si el usuario los dio.
+- ¿Cada afirmacion fuerte tiene soporte? Si no, marcar [FUENTE PENDIENTE].
+- ¿Incluí operacionalizacion/categorias segun enfoque? Si no, agregar."""
+
 with st.sidebar:
     st.markdown("## 📚 Marco Teorico IA")
     st.caption("Powered by Claude · Anthropic")
-    st.markdown(f'<div class="year-badge">📅 Fuentes: <strong>{RANGO}</strong> (ultimos 5 años)<br>Teorias clasicas: sin restriccion de año</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="year-badge">📅 Fuentes: <strong>{RANGO}</strong> (últimos 5 años)<br>Teorías clásicas: sin restricción de año</div>', unsafe_allow_html=True)
     st.markdown("---")
     api_key = st.text_input("API KEY DE ANTHROPIC", type="password", placeholder="sk-ant-...")
     st.caption("Obtener key en console.anthropic.com")
     st.markdown("---")
-    tema = st.text_area("TEMA DE INVESTIGACION", placeholder="Ej: Impacto del uso de redes sociales en el rendimiento academico", height=110)
-    variables = st.text_area("VARIABLES / CATEGORIAS", placeholder="Ej: redes sociales, rendimiento academico", height=75)
+
+    modo = st.radio(
+        "MODO DE TRABAJO",
+        ["ESTRICTO (solo fuentes provistas)", "BORRADOR (sugiere bibliografía)"],
+        index=0,
+        help="ESTRICTO: no inventa citas. BORRADOR: genera texto y sugiere fuentes a buscar."
+    )
+    modo_tag = "ESTRICTO" if "ESTRICTO" in modo else "BORRADOR"
+    if modo_tag == "ESTRICTO":
+        st.markdown('<div class="mode-estricto">🔒 MODO ESTRICTO — sin alucinaciones</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="mode-borrador">✏️ MODO BORRADOR — sugiere fuentes</div>', unsafe_allow_html=True)
+
+    st.markdown("---")
+    tema = st.text_area("TEMA / TÍTULO DE INVESTIGACIÓN", placeholder="Ej: Impacto del uso de TIC en el aprendizaje matemático en secundaria", height=80)
+    problema = st.text_area("PROBLEMA (1 párrafo)", placeholder="Describe brevemente el problema de investigación...", height=80)
+    objetivo = st.text_input("OBJETIVO GENERAL", placeholder="Ej: Determinar la relación entre...")
+    variables = st.text_area("VARIABLES / CONSTRUCTOS", placeholder="Ej: V1=uso de TIC, V2=aprendizaje matemático", height=60)
+
     col1, col2 = st.columns(2)
     with col1:
         tipo_estudio = st.selectbox("ENFOQUE", ["Cuantitativo", "Cualitativo", "Mixto"])
     with col2:
-        tipo_doc = st.selectbox("DOCUMENTO", ["Tesis", "Articulo Cientifico", "TFM", "Monografia"])
-    area = st.selectbox("AREA", ["Educacion / Pedagogia", "Psicologia", "Administracion", "Salud / Medicina", "Ingenieria", "Ciencias Sociales", "Economia", "Derecho", "Comunicacion"])
+        tipo_doc = st.selectbox("DOCUMENTO", ["Tesis", "Artículo Científico", "TFM", "Monografía"])
+
+    area = st.selectbox("ÁREA", ["Educación / Pedagogía", "Psicología", "Administración", "Salud / Medicina", "Ingeniería", "Ciencias Sociales", "Economía", "Derecho", "Comunicación"])
     col3, col4 = st.columns(2)
     with col3:
-        pais = st.text_input("PAIS", value="Peru")
+        pais = st.text_input("PAÍS", value="Perú")
     with col4:
         norma = st.selectbox("NORMA", ["APA 7a ed.", "Vancouver", "Chicago", "ISO 690", "MLA"])
-    idioma = st.selectbox("IDIOMA", ["Espanol + Ingles", "Solo Espanol", "Solo Ingles", "Espanol + Ingles + Portugues"])
-    st.markdown("---")
-    generar = st.button("GENERAR MARCO TEORICO")
 
+    fuentes = st.text_area(
+        "FUENTES PROVISTAS (pega aquí tus fragmentos o fichas)",
+        placeholder="[Fuente 1: Autor, Año, Título. Fragmento o idea resumida]\n[Fuente 2: ...]\n(Dejar vacío para modo ESTRICTO sin fuentes)",
+        height=150,
+        help="Pega fragmentos reales de tus PDFs o fichas bibliográficas completas. El agente SOLO citará lo que pongas aquí."
+    )
+
+    st.markdown("---")
+    generar = st.button("⚡ GENERAR MARCO TEÓRICO")
+
+# ── HERO ──────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="hero-box">
-    <div class="hero-badge">Generador Academico con IA</div>
-    <div class="hero-title">Generador de Marco Teorico</div>
-    <div class="hero-sub">Tesis · Articulos Cientificos · TFM · Monografias</div>
+    <div class="hero-badge">Agente Académico con IA · Rigor Anti-Alucinación</div>
+    <div class="hero-title">Generador de Marco Teórico</div>
+    <div class="hero-sub">Tesis · Artículos Científicos · TFM · Monografías</div>
     <div class="hero-powered">Powered by Claude Anthropic | Fuentes {RANGO}</div>
 </div>
 """, unsafe_allow_html=True)
 
 m1, m2, m3, m4, m5 = st.columns(5)
-metricas = [("5+","Autores por Variable"),("10","Antecedentes Internacionales"),("8","Antecedentes Nacionales"),("12","Terminos en Glosario"),(".docx","Formato Descargable")]
+metricas = [("RAG","Anti-Alucinación"),("APA 7","Citas Verificadas"),("2 Modos","Estricto/Borrador"),("9","Secciones Salida"),(".docx","Descargable")]
 for col, (num, lbl) in zip([m1,m2,m3,m4,m5], metricas):
     col.markdown(f'<div class="metric-card"><div class="metric-num">{num}</div><div class="metric-label">{lbl}</div></div>', unsafe_allow_html=True)
 
-st.markdown(f'<div class="info-box">📌 Completa el formulario, ingresa tu API Key de Anthropic y presiona el boton. Fuentes del periodo <strong>{RANGO}</strong> (ultimos 5 años). Teorias clasicas sin restriccion de año.</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="info-box">📌 Completa el formulario lateral, pega tus fuentes y presiona el botón. Modo <strong>{modo_tag}</strong> activado — período de búsqueda <strong>{RANGO}</strong>.</div>', unsafe_allow_html=True)
 
 st.markdown("---")
-st.markdown("### ¿Que genera esta herramienta?")
-st.markdown("*El marco teorico es uno de los capitulos mas exigentes de cualquier investigacion academica. Esta herramienta lo genera automaticamente, incluyendo:*")
-
-st.markdown("""
-**📌 Por cada variable o categoria:**
-- Definiciones conceptuales por ≥5 autores (espanol, ingles, portugues, chino mandarin)
-- Teorias y modelos teoricos (minimo 3) con descripcion detallada
-- Dimensiones (cuantitativo/mixto) o categorias (cualitativo) con indicadores
-""")
-
-st.markdown("""
-**📖 Glosario:**
-- 12 terminos basicos con definicion academica y cita formal
-""")
-
+st.markdown("### ¿Qué genera esta herramienta?")
+st.markdown("*Marco teórico con rigor académico real. El agente no inventa citas — solo usa lo que tú provees como evidencia:*")
 st.markdown(f"""
-**📚 Antecedentes (todos del periodo {RANGO}):**
-- 10 antecedentes internacionales con resumen/abstract completo
-- 8 antecedentes nacionales del pais elegido con resumen/abstract completo
-""")
+**🔒 Modo ESTRICTO (anti-alucinación):**
+- Solo cita autores/textos que tú pegues en "Fuentes Provistas"
+- Marca [FUENTE PENDIENTE] cuando no hay evidencia
+- Propone términos de búsqueda para lo que falta
 
-st.markdown("""
-**📄 Salida:**
-- Documento Word (.docx) descargable con estructura academica profesional
-- Citas en el formato de tu eleccion (APA 7, Vancouver, Chicago, etc.)
-""")
+**✏️ Modo BORRADOR:**
+- Genera texto conceptual completo
+- Marca sugerencias como [SUGERENCIA] (no como citas reales)
+- Ideal para tener una estructura inicial
 
+**📐 Estructura de salida (9 secciones):**
+- Índice · Marco conceptual · Teorías · Antecedentes empíricos (tabla)
+- Operacionalización · Vacíos de investigación · Limitaciones
+- Referencias verificadas APA 7 · Referencias sugeridas
+
+**📄 Período de antecedentes:** {RANGO} (últimos 5 años) | Teorías clásicas: sin restricción
+""")
 st.markdown("---")
 
+# ── GENERACIÓN ────────────────────────────────────────────────────────────────
 if generar:
     if not api_key:
         st.error("Ingresa tu API Key de Anthropic.")
     elif not tema:
-        st.error("Ingresa el tema de investigacion.")
+        st.error("Ingresa el tema de investigación.")
     elif not variables:
-        st.error("Ingresa al menos una variable.")
+        st.error("Ingresa al menos una variable o constructo.")
     else:
-        lista_vars = [v.strip() for v in variables.split(",")]
-        secciones = ""
-        for i, var in enumerate(lista_vars):
-            dim = "Dimensiones e indicadores" if tipo_estudio == "Cuantitativo" else "Categorias y subcategorias"
-            secciones += f"\n## VARIABLE {i+1}: {var.upper()}\n### 2.{i+1}.1 Definicion conceptual (min 5 autores, {norma}, {RANGO})\n### 2.{i+1}.2 Teorias y modelos (min 3, clasicos y contemporaneos)\n### 2.{i+1}.3 {dim}\n### 2.{i+1}.4 Importancia en {area}\n"
-        prompt = f"""Eres un experto academico. Genera un marco teorico completo para:
-TEMA: {tema} | VARIABLES: {variables}
-ESTUDIO: {tipo_estudio} | DOC: {tipo_doc} | AREA: {area} | PAIS: {pais} | NORMA: {norma}
-PERIODO FUENTES: {RANGO} | TEORIAS CLASICAS: sin restriccion de año
-{secciones}
-## ANTECEDENTES INTERNACIONALES (10, {RANGO}, formato {norma})
-## ANTECEDENTES NACIONALES DE {pais} (8, {RANGO}, mismo formato)
-## BASES TEORICAS INTEGRADORAS
-## GLOSARIO (12 terminos, {norma})
-Redaccion academica formal, minimo 8000 palabras."""
-        with st.spinner("Generando marco teorico con Claude... (2-5 minutos)"):
+        bloque_fuentes = f"""<<<FUENTES_PROVISTAS_POR_USUARIO>>>
+{fuentes if fuentes.strip() else "[BLOQUE VACÍO — no se proveyeron fuentes. Aplicar modo " + modo_tag + " sin citas reales.]"}
+<<<FIN_FUENTES_PROVISTAS_POR_USUARIO>>>"""
+
+        prompt = f"""MODO: {modo_tag}
+
+DATOS DEL ESTUDIO:
+- Tema/Título: {tema}
+- Problema: {problema if problema.strip() else "[No especificado — usa supuestos de trabajo]"}
+- Objetivo general: {objetivo if objetivo.strip() else "[No especificado]"}
+- Variables/Constructos: {variables}
+- Enfoque: {tipo_estudio}
+- Tipo de documento: {tipo_doc}
+- Área: {area}
+- País/contexto: {pais}
+- Norma de citación: {norma}
+- Período de antecedentes: {RANGO} (últimos 5 años; teorías clásicas sin restricción)
+
+{bloque_fuentes}
+
+INSTRUCCIÓN:
+Genera el marco teórico completo siguiendo EXACTAMENTE la estructura de 9 secciones del sistema.
+- Aplica el checklist anti-alucinación antes de responder.
+- En modo ESTRICTO: no inventes ninguna cita. Usa [FUENTE PENDIENTE] donde falte evidencia.
+- En modo BORRADOR: genera texto completo pero marca [SUGERENCIA] en toda bibliografía no provista.
+- La operacionalización debe corresponder al enfoque {tipo_estudio}.
+- Mínimo 6,000 palabras en redacción académica formal en español."""
+
+        with st.spinner(f"Generando marco teórico en modo {modo_tag}... (puede tomar 3-5 minutos)"):
             try:
                 client = anthropic.Anthropic(api_key=api_key)
                 response = client.messages.create(
                     model="claude-opus-4-5",
                     max_tokens=8096,
+                    system=SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": prompt}]
                 )
                 contenido = response.content[0].text
-                st.success("Marco teorico generado exitosamente!")
+                st.success(f"✅ Marco teórico generado en modo {modo_tag}")
                 st.markdown("---")
                 st.markdown(contenido)
+
                 doc = Document()
-                doc.add_heading("MARCO TEORICO", 0)
+                doc.add_heading("MARCO TEÓRICO", 0)
                 doc.add_heading(tema, 1)
+                doc.add_paragraph(f"Modo: {modo_tag} | Enfoque: {tipo_estudio} | Norma: {norma} | Período: {RANGO}")
+                doc.add_paragraph("")
                 for linea in contenido.split("\n"):
                     linea = linea.strip()
                     if not linea:
@@ -230,15 +327,15 @@ Redaccion academica formal, minimo 8000 palabras."""
                 buf.seek(0)
                 st.markdown("---")
                 st.download_button(
-                    label="Descargar Marco Teorico (.docx)",
+                    label="📥 Descargar Marco Teórico (.docx)",
                     data=buf,
                     file_name=f"marco_teorico_{tema[:40].replace(' ','_')}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     use_container_width=True
                 )
             except anthropic.AuthenticationError:
-                st.error("API Key invalida.")
+                st.error("API Key inválida. Verifica en console.anthropic.com")
             except anthropic.RateLimitError:
-                st.error("Limite de uso alcanzado.")
+                st.error("Límite de uso alcanzado. Espera unos minutos o recarga créditos.")
             except Exception as e:
                 st.error(f"Error: {str(e)}")
