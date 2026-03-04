@@ -100,6 +100,55 @@ CSS = """
         margin-top: 8px;
         text-align: center;
     }
+    .desc-section {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 36px 40px;
+        margin: 28px 0;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+    }
+    .desc-title {
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: #1e3a6e;
+        margin-bottom: 8px;
+        border-bottom: 3px solid #2563eb;
+        padding-bottom: 10px;
+        display: inline-block;
+    }
+    .desc-subtitle {
+        font-size: 0.8rem;
+        color: #64748b;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 24px;
+        font-weight: 600;
+    }
+    .desc-block {
+        background: #f8faff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+        border-left: 4px solid #2563eb;
+    }
+    .desc-block-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e3a6e;
+        margin-bottom: 10px;
+    }
+    .desc-block ul {
+        margin: 0;
+        padding-left: 20px;
+        color: #334155;
+        font-size: 0.92rem;
+        line-height: 1.8;
+    }
+    .desc-block-green { border-left-color: #059669; }
+    .desc-block-orange { border-left-color: #d97706; }
+    .desc-block-purple { border-left-color: #7c3aed; }
+    .desc-block-teal { border-left-color: #0891b2; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -144,6 +193,45 @@ for col, (num, lbl) in zip([m1,m2,m3,m4,m5], metricas):
     col.markdown(f'<div class="metric-card"><div class="metric-num">{num}</div><div class="metric-label">{lbl}</div></div>', unsafe_allow_html=True)
 
 st.markdown(f'<div class="info-box">📌 Completa el formulario, ingresa tu API Key de Anthropic y presiona el boton. Fuentes del periodo <strong>{RANGO}</strong> (ultimos 5 anios). Teorias clasicas sin restriccion de anio.</div>', unsafe_allow_html=True)
+
+st.markdown("""
+<div class="desc-section">
+    <div class="desc-title">¿Que genera esta herramienta?</div>
+    <p class="desc-subtitle">El marco teorico es uno de los capitulos mas exigentes de cualquier investigacion academica. Esta herramienta lo genera automaticamente, incluyendo:</p>
+
+    <div class="desc-block">
+        <div class="desc-block-title">📌 Por cada variable o categoria</div>
+        <ul>
+            <li>Definiciones conceptuales por ≥5 autores (espanol, ingles, portugues, chino mandarin)</li>
+            <li>Teorias y modelos teoricos (minimo 3) con descripcion detallada</li>
+            <li>Dimensiones (cuantitativo/mixto) o categorias (cualitativo) con indicadores</li>
+        </ul>
+    </div>
+
+    <div class="desc-block desc-block-green">
+        <div class="desc-block-title">📖 Glosario</div>
+        <ul>
+            <li>12 terminos basicos con definicion academica y cita formal</li>
+        </ul>
+    </div>
+
+    <div class="desc-block desc-block-orange">
+        <div class="desc-block-title">📚 Antecedentes (todos del periodo {RANGO})</div>
+        <ul>
+            <li>10 antecedentes internacionales con resumen/abstract completo</li>
+            <li>8 antecedentes nacionales del pais elegido con resumen/abstract completo</li>
+        </ul>
+    </div>
+
+    <div class="desc-block desc-block-purple">
+        <div class="desc-block-title">📄 Salida</div>
+        <ul>
+            <li>Documento Word (.docx) descargable con estructura academica profesional</li>
+            <li>Citas en el formato de tu eleccion (APA 7, Vancouver, Chicago, etc.)</li>
+        </ul>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 if generar:
     if not api_key:
