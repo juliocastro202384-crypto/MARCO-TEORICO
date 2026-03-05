@@ -218,12 +218,8 @@ with st.sidebar:
     tema = st.text_area("TEMA / TÍTULO", placeholder="Ej: Impacto del uso de TIC en el aprendizaje matemático en secundaria", height=75)
     problema = st.text_area("PROBLEMA (1 párrafo)", placeholder="Describe brevemente el problema de investigación...", height=75)
     objetivo = st.text_input("OBJETIVO GENERAL", placeholder="Ej: Determinar la relación entre uso de TIC y aprendizaje...")
-    obj_esp = st.text_area("OBJETIVOS ESPECÍFICOS (uno por línea)", placeholder="1. Identificar...
-2. Analizar...
-3. Establecer...", height=80)
-    variables = st.text_area("VARIABLES / CONSTRUCTOS", placeholder="V1: uso de TIC
-V2: aprendizaje matemático
-V3: motivación", height=80)
+    obj_esp = st.text_area("OBJETIVOS ESPECÍFICOS (uno por línea)", placeholder="1. Identificar... / 2. Analizar... / 3. Establecer...", height=80)
+    variables = st.text_area("VARIABLES / CONSTRUCTOS", placeholder="V1: uso de TIC | V2: aprendizaje matematico | V3: motivacion", height=80)
 
     col1, col2 = st.columns(2)
     with col1:
