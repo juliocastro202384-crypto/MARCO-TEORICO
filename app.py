@@ -8,7 +8,7 @@ ANIO_ACTUAL = datetime.now().year
 ANIO_INICIO = ANIO_ACTUAL - 5
 RANGO = f"{ANIO_INICIO}-{ANIO_ACTUAL}"
 
-st.set_page_config(page_title="Constructor de Marco Teorico - Claude", page_icon="\u{1F3DB}\uFE0F", layout="wide")
+st.set_page_config(page_title="Constructor de Marco Teorico - Claude", page_icon="🏛️", layout="wide")
 
 CSS = """
 <style>
@@ -43,7 +43,7 @@ SYSTEM_PROMPT = f"""TITULO DEL AGENTE: CONSTRUCTOR DE MARCO TEORICO v5.3
 Eres un AGENTE ACADEMICO DE ALTO RIGOR especializado en construir MARCOS TEORICOS.
 
 ====================================================
-0. DECISION DE MODO — PRIMERA SECCION OBLIGATORIA
+0. DECISION DE MODO - PRIMERA SECCION OBLIGATORIA
 
 DECISION DE MODO
 - Gate global cumplido: Si / No
@@ -73,7 +73,7 @@ Reglas duras:
 - Autor/anio sin metadatos -> [FUENTE CANDIDATA A VERIFICAR]
 
 ====================================================
-III. MODO A — DIAGNOSTICO DOCUMENTAL
+III. MODO A - DIAGNOSTICO DOCUMENTAL
 
 ESTRUCTURA EXACTA:
 
@@ -123,7 +123,7 @@ PROHIBIDO en MODO A:
 - Dividir en partes
 
 ====================================================
-IV. MODO B — REDACCION ACADEMICA FINAL
+IV. MODO B - REDACCION ACADEMICA FINAL
 
 ESTRUCTURA OBLIGATORIA (14 secciones):
 0. Decision de modo
@@ -216,10 +216,10 @@ def generar_docx(texto):
 
 
 with st.sidebar:
-    st.markdown("## \u{1F3DB}\uFE0F Constructor de Marco Teorico")
+    st.markdown("## Constructor de Marco Teorico")
     st.markdown("**v5.3 - Claude - OpenAlex + Redalyc**")
     st.markdown("---")
-    st.markdown("### \U0001F511 Configuracion")
+    st.markdown("### Configuracion")
     api_key = st.text_input("API Key Anthropic", type="password", placeholder="sk-ant-api03-...")
     modo = st.selectbox(
         "Modo de operacion",
@@ -227,14 +227,20 @@ with st.sidebar:
         help="AUTOMATICO: el agente evalua fuentes y decide. FORZAR: anula la decision automatica."
     )
     st.markdown("---")
-    st.markdown("### \U0001F4CB Datos del Estudio")
-    titulo = st.text_input("Titulo / Tema del estudio", placeholder="Ej: Competencias digitales docentes en educacion basica")
+    st.markdown("### Datos del Estudio")
+    titulo = st.text_input(
+        "Titulo / Tema del estudio",
+        placeholder="Ej: Competencias digitales docentes en educacion basica"
+    )
     problema = st.text_area(
         "Problema de investigacion",
         height=80,
         placeholder="Describa el problema o fenomeno a investigar"
     )
-    objetivo_gral = st.text_input("Objetivo general", placeholder="Analizar / Determinar / Explorar...")
+    objetivo_gral = st.text_input(
+        "Objetivo general",
+        placeholder="Analizar / Determinar / Explorar..."
+    )
     objetivos_esp = st.text_area(
         "OBJETIVOS ESPECIFICOS",
         height=100,
@@ -262,8 +268,11 @@ with st.sidebar:
         placeholder="Ej: 120 docentes, nivel primaria, Mexico"
     )
     st.markdown("---")
-    st.markdown("### \U0001F4DA Fuentes")
-    st.caption("Requiere metadatos completos: autor, anio, titulo, revista, DOI. Sin metadatos = no verificada.")
+    st.markdown("### Fuentes")
+    st.caption(
+        "Requiere metadatos completos: autor, anio, titulo, revista, DOI. "
+        "Sin metadatos = no verificada."
+    )
     fuentes_pegadas = st.text_area(
         "Fuentes pegadas manualmente",
         height=150,
@@ -281,7 +290,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption(f"Rango fuentes empiricas: {RANGO} | Teorias clasicas: sin restriccion")
     st.caption("OpenAlex - Redalyc - Latindex - Google Scholar")
-    generar = st.button("\u{1F3DB}\uFE0F GENERAR MARCO TEORICO")
+    generar = st.button("GENERAR MARCO TEORICO")
 
 
 st.markdown("""
@@ -301,11 +310,23 @@ st.markdown("""
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.markdown('<div class="info-box"><b>Gate de evidencia global</b><br>Solo 2 modos: Diagnostico o Redaccion Final. Sin modo hibrido.</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="info-box"><b>Gate de evidencia global</b><br>'
+        'Solo 2 modos: Diagnostico o Redaccion Final. Sin modo hibrido.</div>',
+        unsafe_allow_html=True
+    )
 with col2:
-    st.markdown('<div class="info-box"><b>Semillas detectadas</b><br>Citas del planteamiento clasificadas como semillas para busqueda, no como evidencia.</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="info-box"><b>Semillas detectadas</b><br>'
+        'Citas del planteamiento clasificadas como semillas para busqueda, no como evidencia.</div>',
+        unsafe_allow_html=True
+    )
 with col3:
-    st.markdown('<div class="info-box"><b>Paquete tecnico</b><br>Consultas exactas para OpenAlex, Redalyc, Latindex y Scholar listas para ejecutar.</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="info-box"><b>Paquete tecnico</b><br>'
+        'Consultas exactas para OpenAlex, Redalyc, Latindex y Scholar listas para ejecutar.</div>',
+        unsafe_allow_html=True
+    )
 
 st.markdown(
     '<div class="warning-box">Gate global: Si FALTA suficiencia en al menos 1 variable -> MODO A. '
@@ -324,7 +345,10 @@ if generar:
         elif "FORZAR MODO B" in modo:
             modo_instruccion = "FORZAR MODO B - REDACCION ACADEMICA FINAL"
         else:
-            modo_instruccion = "AUTOMATICO - ejecuta el Gate global y decide segun suficiencia real de fuentes provistas"
+            modo_instruccion = (
+                "AUTOMATICO - ejecuta el Gate global y decide segun "
+                "suficiencia real de fuentes provistas"
+            )
 
         fuentes_bloque = ""
         if fuentes_pegadas.strip():
@@ -355,7 +379,8 @@ MODO SOLICITADO: {modo_instruccion}
 INSTRUCCIONES CRITICAS:
 1. La primera seccion SIEMPRE es DECISION DE MODO.
 2. Ejecuta el Gate Global ANTES de redactar cualquier seccion narrativa.
-3. Si el gate falla -> MODO A: 5 secciones exactas (DECISION / VACIOS / SEMILLAS / CONSULTAS / REINYECCION). Ultima linea: REINYECTAR FUENTES_RECUPERADAS PARA ACTIVAR MODO B.
+3. Si el gate falla -> MODO A: 5 secciones exactas (DECISION / VACIOS / SEMILLAS / CONSULTAS / REINYECCION).
+   Ultima linea: REINYECTAR FUENTES_RECUPERADAS PARA ACTIVAR MODO B.
 4. En MODO A: PROHIBIDO escribir definiciones, sintesis critica, teoria, antecedentes narrativos.
 5. Si el gate pasa -> MODO B: marco teorico completo con las 14 secciones.
 6. Autores sin metadatos completos = [FUENTE CANDIDATA A VERIFICAR]."""
@@ -379,7 +404,9 @@ INSTRUCCIONES CRITICAS:
                         )
             st.success("Analisis completado.")
             docx_buf = generar_docx(full_response)
-            nombre_archivo = f"marco_teorico_{titulo[:30].replace(' ', '_') if titulo else 'estudio'}.docx"
+            nombre_archivo = (
+                f"marco_teorico_{titulo[:30].replace(' ', '_') if titulo else 'estudio'}.docx"
+            )
             st.download_button(
                 label="Descargar Resultado (.docx)",
                 data=docx_buf,
@@ -396,8 +423,10 @@ INSTRUCCIONES CRITICAS:
 st.markdown("---")
 st.markdown(f"""
 <footer>
-  Powered by Claude - Anthropic - v5.3 &nbsp;|&nbsp; OpenAlex + Redalyc + Latindex + Google Scholar
-  &nbsp;|&nbsp; Rango empirico: {RANGO} &nbsp;|&nbsp; Teorias clasicas: sin restriccion &nbsp;|&nbsp;
+  Powered by Claude - Anthropic - v5.3 &nbsp;|&nbsp;
+  OpenAlex + Redalyc + Latindex + Google Scholar &nbsp;|&nbsp;
+  Rango empirico: {RANGO} &nbsp;|&nbsp;
+  Teorias clasicas: sin restriccion &nbsp;|&nbsp;
   Gate global activo - Modo A tecnico compacto
 </footer>
 """, unsafe_allow_html=True)
