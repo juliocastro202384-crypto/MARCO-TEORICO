@@ -1,3 +1,4 @@
+# Constructor de Marco Teorico v5.3.1 - fix SyntaxError placeholder
 import streamlit as st
 import anthropic
 from docx import Document
