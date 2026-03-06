@@ -4,11 +4,6 @@ from docx import Document
 import io
 from datetime import datetime
 
-import anthropic
-from docx import Document
-import io
-from datetime import datetime
-
 ANIO_ACTUAL = datetime.now().year
 ANIO_INICIO = ANIO_ACTUAL - 5
 RANGO = f"{ANIO_INICIO}-{ANIO_ACTUAL}"
@@ -38,10 +33,8 @@ CSS = """
   .main-header p { margin: 0.5rem 0 0; opacity: 0.9; font-size: 0.95rem; }
   .badge-row { display: flex; gap: 8px; margin-top: 0.8rem; flex-wrap: wrap; }
   .badge {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.4);
-    color: white; padding: 3px 10px; border-radius: 20px;
-    font-size: 0.75rem; font-weight: 600;
+    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4);
+    color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
   }
   .info-box {
     background: #eff6ff; border-left: 4px solid #2563eb;
@@ -68,7 +61,7 @@ CSS = """
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-SYSTEM_PROMPT = f"""TITULO: CONSTRUCTOR DE MARCO TEORICO v5.3
+SYSTEM_PROMPT = f"""AGENTE: CONSTRUCTOR DE MARCO TEORICO v5.3
 
 Eres un AGENTE ACADEMICO DE ALTO RIGOR especializado en construir MARCOS TEORICOS.
 
@@ -103,9 +96,7 @@ Reglas duras:
 - Autor/anio sin metadatos -> [FUENTE CANDIDATA A VERIFICAR]
 
 ====================================================
-III. MODO A - DIAGNOSTICO DOCUMENTAL
-
-ESTRUCTURA EXACTA (5 secciones, sin variacion):
+III. MODO A - DIAGNOSTICO DOCUMENTAL (5 secciones exactas)
 
 SECCION 1: DECISION DE MODO
 SECCION 2: VACIOS POR VARIABLE/CATEGORIA
@@ -139,18 +130,14 @@ GOOGLE_SCHOLAR:
 
 SECCION 5: PLANTILLA DE REINYECCION
 <<<FUENTES_RECUPERADAS>>>
-[ID=OA1|Base=OpenAlex|Autor=...|Anio=...|Titulo=...|Revista=...|DOI=...|ISSN_L=...|OA=true/false|PDF=...|URL=...|Extracto=...]
-[ID=R1|Base=Redalyc|Autor=...|Anio=...|Titulo=...|Revista=...|DOI=...|ISSN_L=...|PDF=...|URL=...|Extracto=...]
+[ID=OA1|Base=OpenAlex|Autor=...|Anio=...|Titulo=...|Revista=...|DOI=...|ISSN_L=...|OA=true/false|Extracto=...]
+[ID=R1|Base=Redalyc|Autor=...|Anio=...|Titulo=...|Revista=...|DOI=...|ISSN_L=...|Extracto=...]
 [ID=LX1|Base=Latindex|Revista=...|ISSN_L=...|Estatus=Catalogo 2.0/Directorio/No confirmado|Evidencia=...]
 <<<FIN_FUENTES_RECUPERADAS>>>
 
 LINEA FINAL OBLIGATORIA: REINYECTAR FUENTES_RECUPERADAS PARA ACTIVAR MODO B.
 
-PROHIBIDO en MODO A:
-- Redactar desarrollo conceptual o sintesis critica
-- Escribir antecedentes narrativos
-- Cerrar con preguntas al usuario
-- Dividir en partes
+PROHIBIDO en MODO A: definiciones, sintesis critica, antecedentes narrativos, preguntas al usuario.
 
 ====================================================
 IV. MODO B - REDACCION ACADEMICA FINAL (14 secciones)
@@ -158,12 +145,12 @@ IV. MODO B - REDACCION ACADEMICA FINAL (14 secciones)
 0. Decision de modo
 1. Ficha del estudio
 2. Ruta metodologica identificada y justificada
-3. Inventario de fuentes
-4. Evaluacion de calidad
+3. Inventario de fuentes [ID|Base|Autor/Anio|Titulo|Revista|Verificacion|Validacion|Uso]
+4. Evaluacion de calidad [ID|Pertinencia|Actualidad|Verificabilidad|Calidad editorial|Utilidad|Total|Clasificacion]
 5. Indice del marco teorico
-6. Desarrollo por variables/categorias
+6. Desarrollo por variables/categorias [Delimitacion/Definiciones/Sintesis/Definicion integradora/Implicacion/Dimensiones/Evidencias]
 7. Fundamento teorico general
-8. Antecedentes empiricos + Sintesis integradora
+8. Antecedentes empiricos [Matriz: Autor/anio|pais|objetivo|metodo|muestra|hallazgos|limitaciones|aporte] + Sintesis
 9. Operacionalizacion o categorizacion
 10. Vacios de investigacion
 11. Riesgos de validez y limitaciones
@@ -177,8 +164,8 @@ Dividir en PARTE 1/N si la respuesta no cabe.
 V. RUTAS METODOLOGICAS
 
 Coherencia: problema -> objetivos -> preguntas -> ruta -> marco -> diseno.
-CUANTITATIVA: variables, definiciones, dimensiones, indicadores, hipotesis.
-CUALITATIVA: categorias, significados, perspectivas, subcategorias.
+CUANTITATIVA: variables, definiciones conceptuales/operacionales, dimensiones, indicadores, hipotesis.
+CUALITATIVA: categorias, significados, perspectivas interpretativas, subcategorias.
 MIXTA: integra variables y categorias, combina evidencia cuanti/cuali.
 
 ====================================================
@@ -216,7 +203,7 @@ Solo VERIFICADAS sostienen la redaccion final.
 X. EVALUACION DE CALIDAD (solo MODO B, escala 1-5)
 
 A. Pertinencia | B. Actualidad | C. Verificabilidad | D. Calidad editorial | E. Utilidad
-Total: 23-25=ALTA PRIORIDAD | 18-22=UTIL | 13-17=COMPLEMENTARIA | 8-12=DEBIL | 5-7=NO RECOMENDADA
+23-25=ALTA PRIORIDAD | 18-22=UTIL | 13-17=COMPLEMENTARIA | 8-12=DEBIL | 5-7=NO RECOMENDADA
 
 ====================================================
 XI. APA 7
