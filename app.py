@@ -725,17 +725,15 @@ if recuperar:
 
             pb.progress(0.82)
             all_dedup = dedup_records(all_raw)
-                # FIX 1: Excluir fuentes con keywords irrelevantes
-        all_dedup = [r for r in all_dedup if is_relevant_record(r)]
-        # FIX 2: Excluir ruido bibliografico (titulo <4 palabras o book-section)
-        all_dedup = [r for r in all_dedup if not is_noise_record(r)]
-        pb.progress(0.88)
-        verified = verify_records_concurrent(all_dedup, progress_bar=pb)
-        pb.progress(1.0)
-
-        st.session_state["fuentes_recuperadas"] = all_dedup
-        st.session_state["fuentes_verificadas"] = verified
-
+                            pb.progress(0.82)
+            all_dedup = dedup_records(all_raw)
+            # FIX 1: Excluir fuentes con keywords irrelevantes
+            all_dedup = [r for r in all_dedup if is_relevant_record(r)]
+            # FIX 2: Excluir ruido bibliografico (titulo <4 palabras o book-section)
+            all_dedup = [r for r in all_dedup if not is_noise_record(r)]
+            pb.progress(0.88)
+            verified = verify_records_concurrent(all_dedup, progress_bar=pb)
+            pb.progress(1.0)
 
         if all_dedup:
             lineas = []
