@@ -774,10 +774,10 @@ if recuperar:
             st.warning("No se encontraron fuentes con ninguna query. Verifica las variables o prueba con terminos mas generales.")
 
 
-    elif st.session_state["fuentes_recuperadas"]:
-        total = len(st.session_state["fuentes_recuperadas"])
-        verif = len(st.session_state["fuentes_verificadas"])
-        st.info(f"Fuentes en sesion: {total} recuperadas, {verif} verificadas. Presiona 'Recuperar + Verificar' para actualizar.")
+elif st.session_state["fuentes_recuperadas"]:
+    total = len(st.session_state["fuentes_recuperadas"])
+    verif = len(st.session_state["fuentes_verificadas"])
+    st.info(f"Fuentes en sesion: {total} recuperadas, {verif} verificadas. Presiona 'Recuperar + Verificar' para actualizar.")
 
 if generar:
     if not api_key:
