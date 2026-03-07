@@ -4,6 +4,40 @@
 import io
 import re
 import html
+
+def md_to_html(text: str) -> str:
+    """Convierte markdown a HTML compacto para mostrar en result-container."""
+    import re as _re
+    # Colapsar 3+ saltos de linea consecutivos a 2
+    text = _re.sub(r'\n{3,}', '\n\n', text)
+    lines = text.split('\n')
+    out = []
+    for line in lines:
+        s = line.strip()
+        if not s:
+            # linea vacia: solo agrega separador si la anterior no fue vacia
+            if out and out[-1] != '':
+                out.append('')
+            continue
+        # Encabezados ## -> h2, ### -> h3, # -> h2
+        if _re.match(r'^### ', s):
+            s = '<h3>' + html.escape(s[4:]) + '</h3>'
+        elif _re.match(r'^## ', s):
+            s = '<h2>' + html.escape(s[3:]) + '</h2>'
+        elif _re.match(r'^# ', s):
+            s = '<h2>' + html.escape(s[2:]) + '</h2>'
+        else:
+            # Escapar y formatear inline
+            s = html.escape(s)
+            # **negrita**
+            s = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', s)
+            # *italica*
+            s = _re.sub(r'\*(.+?)\*', r'<em>\1</em>', s)
+            # Lineas normales como parrafo
+            s = '<p>' + s + '</p>'
+        out.append(s)
+    # Unir sin saltos extra
+    return '\n'.join(out)
 import math
 import os
 from datetime import datetime
@@ -51,7 +85,15 @@ CSS = """
   .badge { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
   .info-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 1rem 1.2rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
   .warning-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 1rem 1.2rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
-  .result-container { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.5rem; margin-top: 1rem; white-space: pre-wrap; }
+  .result-container { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.5rem 2rem; margin-top: 1rem; font-size: 0.95rem; line-height: 1.7; }
+    .result-container h2 { font-size: 1.15rem; font-weight: 700; color: #1e3a5f; margin: 1.2rem 0 0.3rem; border-bottom: 1px solid #dbeafe; padding-bottom: 0.2rem; }
+    .result-container h3 { font-size: 1.0rem; font-weight: 700; color: #2563eb; margin: 0.9rem 0 0.2rem; }
+    .result-container p { margin: 0.35rem 0; text-align: justify; }
+    .result-container strong { color: #111827; }
+    .result-container table { border-collapse: collapse; width: 100%; margin: 0.8rem 0; font-size: 0.88rem; }
+    .result-container th { background: #2563eb; color: white; padding: 0.4rem 0.6rem; text-align: left; }
+    .result-container td { border: 1px solid #e5e7eb; padding: 0.35rem 0.6rem; }
+    .result-container tr:nth-child(even) { background: #f0f4ff; }
   .stButton > button { background: linear-gradient(135deg, #1e3a5f, #2563eb); color: white; border: none; border-radius: 8px; padding: 0.6rem 1.2rem; font-weight: 600; width: 100%; }
   footer { color: #9ca3af; font-size: 0.8rem; text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
 </style>
@@ -835,9 +877,8 @@ if generar:
                 ) as stream:
                     for text in stream.text_stream:
                         full_response += text
-                        escaped_response += html.escape(text)
                         result_area.markdown(
-                            f"<div class='result-container'>{escaped_response}</div>",
+                            f"<div class='result-container'>{md_to_html(full_response)}</div>",
                             unsafe_allow_html=True,
                         )
             st.success("Analisis completado.")
