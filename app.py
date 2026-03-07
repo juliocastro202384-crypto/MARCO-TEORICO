@@ -90,10 +90,10 @@ CSS = """
     .result-container h3 { font-size: 1.0rem; font-weight: 700; color: #2563eb; margin: 0.9rem 0 0.2rem; }
     .result-container p { margin: 0.35rem 0; text-align: justify; }
     .result-container strong { color: #111827; }
-    .result-container table { border-collapse: collapse; width: 100%; margin: 0.8rem 0; font-size: 0.88rem; }
-    .result-container th { background: #2563eb; color: white; padding: 0.4rem 0.6rem; text-align: left; }
-    .result-container td { border: 1px solid #e5e7eb; padding: 0.35rem 0.6rem; }
-    .result-container tr:nth-child(even) { background: #f0f4ff; }
+    .result-container table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9rem; }
+    .result-container th { background-color: #2c3e50; color: white; padding: 8px 12px; text-align: left; }
+    .result-container td { padding: 7px 12px; border-bottom: 1px solid #dee2e6; }
+    .result-container tr:nth-child(even) td { background-color: #f8f9fa; }
   .stButton > button { background: linear-gradient(135deg, #1e3a5f, #2563eb); color: white; border: none; border-radius: 8px; padding: 0.6rem 1.2rem; font-weight: 600; width: 100%; }
   footer { color: #9ca3af; font-size: 0.8rem; text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
 </style>
