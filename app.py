@@ -1,4 +1,4 @@
-# app.py -- Constructor de Marco Teorico v7.1.0 (P-7 + Fix1: keyword filter + Fix2: noise filter + Fix3: DOI GET verification)
+# app.py -- Constructor de Marco Teorico v7.2.0 (P-7 + Fix1: keyword filter + Fix2: noise filter + Fix3: DOI GET verification)
 # Sidebar reestructurado: 6 secciones + boton Recuperar separado
 
 import io
@@ -8,7 +8,7 @@ import markdown
 def md_to_html(text: str) -> str:
     """Convierte markdown a HTML usando la libreria markdown con soporte de tablas."""
     text = re.sub(r'\n{3,}', '\n\n', text)
-    return markdown.markdown(
+    return markdown.markdown
         text,
         extensions=['tables', 'fenced_code'],
     )
@@ -876,16 +876,16 @@ if generar:
             result_area = st.empty()
 
             # Paso 1/2: S0-S6
-            with st.spinner("Paso 1/2 — Generando S0 a S6..."):
+            with st.spinner("⏳ Paso 1/2 — Generando S0 a S6..."):
                 parte_1 = generar_marco_completo(
                     variables_cats, fuentes_para_prompt, SYSTEM_PROMPT,
                     client, modelo, result_area,
                 )
-            st.success("S0-S6 listos")
+            st.success("✅ S0–S6 listos")
 
             # Paso 2/2: S7-S14
             parte_2 = ""
-            with st.spinner("Paso 2/2 — Generando S7 a S14..."):
+            with st.spinner("⏳ Paso 2/2 — Generando S7 a S14..."):
                 with client.messages.stream(
                     model=modelo,
                     max_tokens=6000,
@@ -904,7 +904,7 @@ if generar:
                             f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>Generando S7-S14...</p></div>",
                             unsafe_allow_html=True,
                         )
-            st.success("S7-S14 listos")
+            st.success("✅ S7–S14 listos")
 
             # Resultado final
             contenido = parte_1 + "\n\n" + parte_2
@@ -915,7 +915,7 @@ if generar:
             nombre_archivo = f"marco_teorico_{titulo[:30].replace(' ', '_') if titulo else 'estudio'}.docx"
             docx_bytes = generar_docx(contenido)
             st.download_button(
-                label="Descargar Marco Teorico completo (.docx)",
+                label="⬇️ Descargar Marco Teórico completo (.docx)",
                 data=docx_bytes,
                 file_name=nombre_archivo,
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
