@@ -569,7 +569,7 @@ def generar_docx(texto: str) -> io.BytesIO:
     return buf
 
 def generar_marco_completo(variables, fuentes, system_prompt, client, modelo, result_area):
-    """Genera el marco en 2 llamadas separadas: S0-S6 y luego S7-S14."""
+    """Llamada 1/2: genera S0-S6 con streaming. Retorna el texto completo."""
 
     # ══ LLAMADA 1: S0 al S6 ══
     prompt_1 = f"""
@@ -583,52 +583,20 @@ INSTRUCCION: Genera UNICAMENTE las secciones S0, S1, S2, S3, S4, S5 y S6.
 Termina exactamente al cerrar S6. No escribas S7 ni ninguna seccion posterior.
 """
 
-    # ══ LLAMADA 2: S7 al S14 ══
-    prompt_2 = f"""
-{system_prompt}
-
-VARIABLES: {variables}
-
-FUENTES VERIFICADAS: {fuentes}
-
-INSTRUCCION: Las secciones S0-S6 ya fueron generadas.
-Genera UNICAMENTE desde S7 hasta S14.
-Empieza directamente con ## S7 sin repetir nada anterior.
-"""
-
-    def _llamar_claude(prompt, indicador):
-        texto = ""
-        with client.messages.stream(
-            model=modelo,
-            max_tokens=6000,
-            messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            for chunk in stream.text_stream:
-                texto += chunk
-                result_area.markdown(
-                    f"<div class='result-container'>{md_to_html(texto)}"
-                    f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>{indicador}</p></div>",
-                    unsafe_allow_html=True,
-                )
-        return texto
-
-    parte_1 = _llamar_claude(prompt_1, "Generando S0-S6...")
-
-    parte_2 = ""
+    parte_1 = ""
     with client.messages.stream(
         model=modelo,
         max_tokens=6000,
-        messages=[{"role": "user", "content": prompt_2}],
+        messages=[{"role": "user", "content": prompt_1}],
     ) as stream:
         for chunk in stream.text_stream:
-            parte_2 += chunk
+            parte_1 += chunk
             result_area.markdown(
-                f"<div class='result-container'>{md_to_html(parte_1 + chr(10)*2 + parte_2)}"
-                f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>Generando S7-S14...</p></div>",
+                f"<div class='result-container'>{md_to_html(parte_1)}"
+                f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>Generando S0-S6...</p></div>",
                 unsafe_allow_html=True,
             )
-
-    return parte_1 + "\n\n" + parte_2
+    return parte_1
 
 
 SYSTEM_PROMPT = (
@@ -930,23 +898,54 @@ if generar:
         )
         try:
             client = anthropic.Anthropic(api_key=api_key)
+            fuentes_para_prompt = fuentes_auto_bloque + "\n" + fuentes_bloque
             result_area = st.empty()
-            with st.spinner("Llamada 1/2: generando S0-S6... despues S7-S14 automaticamente."):
-                fuentes_para_prompt = fuentes_auto_bloque + "\n" + fuentes_bloque
-                full_response = generar_marco_completo(
+
+            # Paso 1/2: S0-S6
+            with st.spinner("Paso 1/2 — Generando S0 a S6..."):
+                parte_1 = generar_marco_completo(
                     variables_cats, fuentes_para_prompt, SYSTEM_PROMPT,
                     client, modelo, result_area,
                 )
+            st.success("S0-S6 listos")
+
+            # Paso 2/2: S7-S14
+            parte_2 = ""
+            with st.spinner("Paso 2/2 — Generando S7 a S14..."):
+                with client.messages.stream(
+                    model=modelo,
+                    max_tokens=6000,
+                    messages=[{"role": "user", "content": (
+                        f"{SYSTEM_PROMPT}\n\nVARIABLES: {variables_cats}"
+                        f"\n\nFUENTES VERIFICADAS: {fuentes_para_prompt}"
+                        "\n\nINSTRUCCION: Las secciones S0-S6 ya fueron generadas. "
+                        "Genera UNICAMENTE desde S7 hasta S14. "
+                        "Empieza directamente con ## S7 sin repetir nada anterior."
+                    )}],
+                ) as stream:
+                    for chunk in stream.text_stream:
+                        parte_2 += chunk
+                        result_area.markdown(
+                            f"<div class='result-container'>{md_to_html(parte_1 + chr(10)*2 + parte_2)}"
+                            f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>Generando S7-S14...</p></div>",
+                            unsafe_allow_html=True,
+                        )
+            st.success("S7-S14 listos")
+
+            # Resultado final
+            contenido = parte_1 + "\n\n" + parte_2
             result_area.markdown(
-                f"<div class='result-container'>{md_to_html(full_response)}</div>",
+                f"<div class='result-container'>{md_to_html(contenido)}</div>",
                 unsafe_allow_html=True,
             )
-            st.success("Marco teorico completo (S0-S14).")
-            docx_buf = generar_docx(full_response)
             nombre_archivo = f"marco_teorico_{titulo[:30].replace(' ', '_') if titulo else 'estudio'}.docx"
-            st.download_button(label="Descargar resultado (.docx)", data=docx_buf,
+            docx_bytes = generar_docx(contenido)
+            st.download_button(
+                label="Descargar Marco Teorico completo (.docx)",
+                data=docx_bytes,
                 file_name=nombre_archivo,
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
         except anthropic.AuthenticationError:
             st.error("API Key invalida. Verifica en console.anthropic.com")
         except anthropic.RateLimitError:
