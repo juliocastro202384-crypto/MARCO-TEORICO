@@ -568,6 +568,53 @@ def generar_docx(texto: str) -> io.BytesIO:
     buf.seek(0)
     return buf
 
+def generar_marco_completo(client, modelo, mensaje_base, result_area):
+    """Genera el marco en 2 llamadas: S0-S6 primero, luego S7-S14."""
+    instruccion_p1 = (
+        mensaje_base
+        + "\n\nINSTRUCCION ESPECIAL: Genera UNICAMENTE las secciones S0, S1, S2, S3, S4, S5 y S6. "
+        + "Termina exactamente al cerrar S6. No escribas S7 ni ninguna seccion posterior."
+    )
+    instruccion_p2 = (
+        mensaje_base
+        + "\n\nINSTRUCCION ESPECIAL: Las secciones S0 a S6 ya fueron generadas. "
+        + "Genera UNICAMENTE desde S7 hasta S14. "
+        + "Empieza directamente con ## S7 sin repetir nada anterior."
+    )
+    # Parte 1: S0-S6
+    parte_1 = ""
+    with client.messages.stream(
+        model=modelo,
+        max_tokens=6000,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": instruccion_p1}],
+    ) as stream:
+        for text in stream.text_stream:
+            parte_1 += text
+            result_area.markdown(
+                f"<div class='result-container'>{md_to_html(parte_1)}"
+                f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>Generando S0-S6...</p></div>",
+                unsafe_allow_html=True,
+            )
+    # Parte 2: S7-S14
+    parte_2 = ""
+    with client.messages.stream(
+        model=modelo,
+        max_tokens=6000,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": instruccion_p2}],
+    ) as stream:
+        for text in stream.text_stream:
+            parte_2 += text
+            combined = parte_1 + "\n\n" + parte_2
+            result_area.markdown(
+                f"<div class='result-container'>{md_to_html(combined)}"
+                f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>Generando S7-S14...</p></div>",
+                unsafe_allow_html=True,
+            )
+    return parte_1 + "\n\n" + parte_2
+
+
 SYSTEM_PROMPT = (
     "AGENTE: CONSTRUCTOR DE MARCO TEORICO v7.0 (P-7)\n"
     "Eres un AGENTE ACADEMICO DE ALTO RIGOR DOCTORAL.\n\n"
@@ -867,21 +914,14 @@ if generar:
         )
         try:
             client = anthropic.Anthropic(api_key=api_key)
-            with st.spinner("Ejecutando gate de evidencia..."):
-                result_area = st.empty()
-                full_response = ""
-                escaped_response = ""
-                with client.messages.stream(
-                    model=modelo, max_tokens=8000, system=SYSTEM_PROMPT,
-                    messages=[{"role": "user", "content": mensaje_usuario}],
-                ) as stream:
-                    for text in stream.text_stream:
-                        full_response += text
-                        result_area.markdown(
-                            f"<div class='result-container'>{md_to_html(full_response)}</div>",
-                            unsafe_allow_html=True,
-                        )
-            st.success("Analisis completado.")
+            result_area = st.empty()
+            with st.spinner("Llamada 1/2: generando S0-S6... despues S7-S14 automaticamente."):
+                full_response = generar_marco_completo(client, modelo, mensaje_usuario, result_area)
+            result_area.markdown(
+                f"<div class='result-container'>{md_to_html(full_response)}</div>",
+                unsafe_allow_html=True,
+            )
+            st.success("Marco teorico completo (S0-S14).")
             docx_buf = generar_docx(full_response)
             nombre_archivo = f"marco_teorico_{titulo[:30].replace(' ', '_') if titulo else 'estudio'}.docx"
             st.download_button(label="Descargar resultado (.docx)", data=docx_buf,
