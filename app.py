@@ -725,8 +725,6 @@ if recuperar:
 
             pb.progress(0.82)
             all_dedup = dedup_records(all_raw)
-                            pb.progress(0.82)
-            all_dedup = dedup_records(all_raw)
             # FIX 1: Excluir fuentes con keywords irrelevantes
             all_dedup = [r for r in all_dedup if is_relevant_record(r)]
             # FIX 2: Excluir ruido bibliografico (titulo <4 palabras o book-section)
@@ -734,6 +732,8 @@ if recuperar:
             pb.progress(0.88)
             verified = verify_records_concurrent(all_dedup, progress_bar=pb)
             pb.progress(1.0)
+            st.session_state["fuentes_recuperadas"] = all_dedup
+            st.session_state["fuentes_verificadas"] = verified
 
         if all_dedup:
             lineas = []
@@ -774,10 +774,10 @@ if recuperar:
             st.warning("No se encontraron fuentes con ninguna query. Verifica las variables o prueba con terminos mas generales.")
 
 
-elif st.session_state["fuentes_recuperadas"]:
-    total = len(st.session_state["fuentes_recuperadas"])
-    verif = len(st.session_state["fuentes_verificadas"])
-    st.info(f"Fuentes en sesion: {total} recuperadas, {verif} verificadas. Presiona 'Recuperar + Verificar' para actualizar.")
+    elif st.session_state["fuentes_recuperadas"]:
+        total = len(st.session_state["fuentes_recuperadas"])
+        verif = len(st.session_state["fuentes_verificadas"])
+        st.info(f"Fuentes en sesion: {total} recuperadas, {verif} verificadas. Presiona 'Recuperar + Verificar' para actualizar.")
 
 if generar:
     if not api_key:
