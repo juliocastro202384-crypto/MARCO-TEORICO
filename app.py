@@ -568,50 +568,66 @@ def generar_docx(texto: str) -> io.BytesIO:
     buf.seek(0)
     return buf
 
-def generar_marco_completo(client, modelo, mensaje_base, result_area):
-    """Genera el marco en 2 llamadas: S0-S6 primero, luego S7-S14."""
-    instruccion_p1 = (
-        mensaje_base
-        + "\n\nINSTRUCCION ESPECIAL: Genera UNICAMENTE las secciones S0, S1, S2, S3, S4, S5 y S6. "
-        + "Termina exactamente al cerrar S6. No escribas S7 ni ninguna seccion posterior."
-    )
-    instruccion_p2 = (
-        mensaje_base
-        + "\n\nINSTRUCCION ESPECIAL: Las secciones S0 a S6 ya fueron generadas. "
-        + "Genera UNICAMENTE desde S7 hasta S14. "
-        + "Empieza directamente con ## S7 sin repetir nada anterior."
-    )
-    # Parte 1: S0-S6
-    parte_1 = ""
-    with client.messages.stream(
-        model=modelo,
-        max_tokens=6000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": instruccion_p1}],
-    ) as stream:
-        for text in stream.text_stream:
-            parte_1 += text
-            result_area.markdown(
-                f"<div class='result-container'>{md_to_html(parte_1)}"
-                f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>Generando S0-S6...</p></div>",
-                unsafe_allow_html=True,
-            )
-    # Parte 2: S7-S14
+def generar_marco_completo(variables, fuentes, system_prompt, client, modelo, result_area):
+    """Genera el marco en 2 llamadas separadas: S0-S6 y luego S7-S14."""
+
+    # ══ LLAMADA 1: S0 al S6 ══
+    prompt_1 = f"""
+{system_prompt}
+
+VARIABLES: {variables}
+
+FUENTES VERIFICADAS: {fuentes}
+
+INSTRUCCION: Genera UNICAMENTE las secciones S0, S1, S2, S3, S4, S5 y S6.
+Termina exactamente al cerrar S6. No escribas S7 ni ninguna seccion posterior.
+"""
+
+    # ══ LLAMADA 2: S7 al S14 ══
+    prompt_2 = f"""
+{system_prompt}
+
+VARIABLES: {variables}
+
+FUENTES VERIFICADAS: {fuentes}
+
+INSTRUCCION: Las secciones S0-S6 ya fueron generadas.
+Genera UNICAMENTE desde S7 hasta S14.
+Empieza directamente con ## S7 sin repetir nada anterior.
+"""
+
+    def _llamar_claude(prompt, indicador):
+        texto = ""
+        with client.messages.stream(
+            model=modelo,
+            max_tokens=6000,
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            for chunk in stream.text_stream:
+                texto += chunk
+                result_area.markdown(
+                    f"<div class='result-container'>{md_to_html(texto)}"
+                    f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>{indicador}</p></div>",
+                    unsafe_allow_html=True,
+                )
+        return texto
+
+    parte_1 = _llamar_claude(prompt_1, "Generando S0-S6...")
+
     parte_2 = ""
     with client.messages.stream(
         model=modelo,
         max_tokens=6000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": instruccion_p2}],
+        messages=[{"role": "user", "content": prompt_2}],
     ) as stream:
-        for text in stream.text_stream:
-            parte_2 += text
-            combined = parte_1 + "\n\n" + parte_2
+        for chunk in stream.text_stream:
+            parte_2 += chunk
             result_area.markdown(
-                f"<div class='result-container'>{md_to_html(combined)}"
+                f"<div class='result-container'>{md_to_html(parte_1 + chr(10)*2 + parte_2)}"
                 f"<p style='color:#6b7280;font-size:0.8rem;margin-top:0.8rem'>Generando S7-S14...</p></div>",
                 unsafe_allow_html=True,
             )
+
     return parte_1 + "\n\n" + parte_2
 
 
@@ -916,7 +932,11 @@ if generar:
             client = anthropic.Anthropic(api_key=api_key)
             result_area = st.empty()
             with st.spinner("Llamada 1/2: generando S0-S6... despues S7-S14 automaticamente."):
-                full_response = generar_marco_completo(client, modelo, mensaje_usuario, result_area)
+                fuentes_para_prompt = fuentes_auto_bloque + "\n" + fuentes_bloque
+                full_response = generar_marco_completo(
+                    variables_cats, fuentes_para_prompt, SYSTEM_PROMPT,
+                    client, modelo, result_area,
+                )
             result_area.markdown(
                 f"<div class='result-container'>{md_to_html(full_response)}</div>",
                 unsafe_allow_html=True,
