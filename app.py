@@ -1,4 +1,4 @@
-# app.py -- Constructor de Marco Teorico v6.0.0 (P-6: MODO B lenguaje doctoral)
+# app.py -- Constructor de Marco Teorico v7.0.0 (P-7: queries VI/VD + fallback + clasificador)
 # Sidebar reestructurado: 6 secciones + boton Recuperar separado
 
 import io
@@ -98,6 +98,209 @@ def is_valid_doi(doi: str) -> bool:
     d = doi.strip().lower()
     return d.startswith("10.") and "/" in d
 
+
+# ===== P-7: Traduccion, Queries especificas, Clasificador, Fallback =====
+
+# Diccionario de traduccion ES→EN para terminos comunes en ciencias sociales
+_ES_EN = {
+    "competencias digitales": "digital competencies",
+    "competencia digital": "digital competency",
+    "tecnologia educativa": "educational technology",
+    "rendimiento academico": "academic performance",
+    "aprendizaje": "learning",
+    "ensenanza": "teaching",
+    "docentes": "teachers",
+    "estudiantes": "students",
+    "motivacion": "motivation",
+    "liderazgo": "leadership",
+    "gestion": "management",
+    "clima organizacional": "organizational climate",
+    "satisfaccion laboral": "job satisfaction",
+    "desempeno": "performance",
+    "innovacion": "innovation",
+    "inclusion": "inclusion",
+    "educacion": "education",
+    "salud mental": "mental health",
+    "bienestar": "wellbeing",
+    "ansiedad": "anxiety",
+    "resiliencia": "resilience",
+    "autoeficacia": "self-efficacy",
+    "inteligencia emocional": "emotional intelligence",
+    "habilidades": "skills",
+    "alfabetizacion": "literacy",
+    "evaluacion": "assessment",
+    "curriculo": "curriculum",
+    "pedagogia": "pedagogy",
+    "didactica": "didactics",
+    "constructivismo": "constructivism",
+    "aprendizaje significativo": "meaningful learning",
+    "trabajo colaborativo": "collaborative work",
+    "pensamiento critico": "critical thinking",
+    "resolucion de problemas": "problem solving",
+    "toma de decisiones": "decision making",
+    "comunicacion": "communication",
+    "entornos virtuales": "virtual environments",
+    "educacion a distancia": "distance education",
+    "e-learning": "e-learning",
+    "blended learning": "blended learning",
+    "gamificacion": "gamification",
+    "inteligencia artificial": "artificial intelligence",
+    "big data": "big data",
+    "redes sociales": "social networks",
+    "emprendimiento": "entrepreneurship",
+    "sostenibilidad": "sustainability",
+    "equidad": "equity",
+    "genero": "gender",
+    "interculturalidad": "interculturality",
+    "violencia escolar": "school violence",
+    "bullying": "bullying",
+    "desercion escolar": "school dropout",
+    "nivel socioeconomico": "socioeconomic status",
+    "familia": "family",
+    "padres": "parents",
+    "comunidad": "community",
+}
+
+def translate_query(text: str) -> str:
+    """Traduce terminos clave ES→EN para mejorar cobertura en APIs."""
+    if not text:
+        return text
+    t = text.lower().strip()
+    # Ordenar por longitud descendente para reemplazar frases antes que palabras sueltas
+    for es, en in sorted(_ES_EN.items(), key=lambda x: -len(x[0])):
+        t = t.replace(es, en)
+    return t
+
+def build_queries(vi: str, vd: str, titulo: str, area: str) -> List[str]:
+    """Genera queries especificas a partir de VI/VD: ES + EN + combinadas."""
+    queries = []
+    vi_c = vi.strip() if vi else ""
+    vd_c = vd.strip() if vd else ""
+    titulo_c = titulo.strip() if titulo else ""
+
+    # Query 1: VI + VD en español
+    if vi_c and vd_c:
+        queries.append(f"{vi_c} {vd_c}")
+    elif vi_c:
+        queries.append(vi_c)
+    elif vd_c:
+        queries.append(vd_c)
+
+    # Query 2: traduccion al ingles
+    vi_en = translate_query(vi_c)
+    vd_en = translate_query(vd_c)
+    if vi_en and vd_en and (vi_en != vi_c or vd_en != vd_c):
+        queries.append(f"{vi_en} {vd_en}")
+    elif vi_en and vi_en != vi_c:
+        queries.append(vi_en)
+
+    # Query 3: titulo del estudio
+    if titulo_c and titulo_c not in queries:
+        queries.append(titulo_c)
+
+    # Query 4: VI sola en ingles
+    if vi_en and vi_en not in queries:
+        queries.append(vi_en)
+
+    # Query 5: VD sola en ingles
+    if vd_en and vd_en not in queries and vd_en != vi_en:
+        queries.append(vd_en)
+
+    # Eliminar duplicados y vacios, limitar a 4
+    seen = set()
+    final = []
+    for q in queries:
+        q = q.strip()
+        if q and q not in seen:
+            seen.add(q)
+            final.append(q)
+    return final[:4]
+
+def classify_source(record: Dict, year_from: int) -> str:
+    """Clasifica una fuente como conceptual, teorica o empirica."""
+    title = (record.get("title") or "").lower()
+    abstract = (record.get("abstract") or "").lower()
+    year = record.get("year") or 0
+    combined = title + " " + abstract
+
+    # Indicadores empíricos
+    empirical_kw = ["study", "survey", "sample", "participants", "n=", "results show",
+                    "findings", "regression", "correlation", "experiment", "data",
+                    "questionnaire", "analysis", "estudio", "muestra", "participantes",
+                    "resultados", "hallazgos", "regresion", "correlacion", "datos",
+                    "encuesta", "cuestionario", "analisis empirico"]
+    # Indicadores teóricos
+    theory_kw = ["theory", "theoretical", "framework", "model", "conceptual framework",
+                 "teoria", "teorico", "marco conceptual", "modelo teorico", "paradigma",
+                 "epistemolog", "ontolog", "review", "meta-analysis", "systematic review",
+                 "revision sistematica", "metaanalisis"]
+
+    emp_score = sum(1 for kw in empirical_kw if kw in combined)
+    the_score = sum(1 for kw in theory_kw if kw in combined)
+
+    if emp_score >= 2 and year >= year_from:
+        return "empirica"
+    elif the_score >= 2:
+        return "teorica"
+    elif emp_score >= 1 and year >= year_from:
+        return "empirica"
+    else:
+        return "conceptual"
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def crossref_search(query: str, year_from: int, max_results: int = 8) -> List[Dict]:
+    """Busca en Crossref API por query y filtra por anio."""
+    try:
+        params = {
+            "query": query,
+            "rows": max_results,
+            "filter": f"from-pub-date:{year_from}",
+            "select": "DOI,title,author,published,container-title,abstract",
+        }
+        r = requests.get(
+            f"{CROSSREF}/works",
+            params=params,
+            timeout=10,
+            headers={"User-Agent": "MarcoTeoricoApp/7.0"},
+        )
+        if r.status_code != 200:
+            return []
+        results = []
+        for item in r.json().get("message", {}).get("items", []):
+            doi = (item.get("DOI") or "").strip()
+            titles = item.get("title") or []
+            title = titles[0] if titles else ""
+            authors_raw = item.get("author") or []
+            authors = [
+                f"{a.get('family', '')} {a.get('given', '')[:1]}".strip()
+                for a in authors_raw[:3]
+            ]
+            pub = item.get("published") or item.get("published-print") or {}
+            dp = pub.get("date-parts") or [[None]]
+            year = dp[0][0] if dp and dp[0] else None
+            venue_list = item.get("container-title") or []
+            venue = venue_list[0] if venue_list else ""
+            abstract = (item.get("abstract") or "")[:400]
+            abstract = re.sub(r"<[^>]+>", "", abstract)  # strip HTML
+            if not title:
+                continue
+            results.append({
+                "id": f"CR_{len(results)+1}",
+                "source": "Crossref",
+                "title": title,
+                "year": year,
+                "authors": authors,
+                "venue": venue,
+                "doi": doi,
+                "abstract": abstract,
+                "open_access": False,
+                "verified_by": ["Crossref"],
+                "quality_flags": {},
+            })
+        return results
+    except Exception:
+        return []
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def crossref_ok(doi: str) -> bool:
     try:
@@ -108,20 +311,32 @@ def crossref_ok(doi: str) -> bool:
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def openalex_search(query: str, variables: str, year_from: int, max_results: int = 10) -> List[Dict]:
+    """OpenAlex: busca con query principal + traduccion EN. Filtra por anio."""
     try:
+        query_en = translate_query(query)
+        search_term = query_en if query_en != query else query
         params = {
-            "search": f"{query} {variables}",
+            "search": search_term,
             "filter": f"from_publication_date:{year_from}-01-01,is_paratext:false",
             "per-page": max_results,
             "select": "id,doi,title,publication_year,authorships,primary_location,open_access,abstract_inverted_index,primary_topic",
         }
-        r = requests.get(f"{OPENALEX}/works", params=params, timeout=10, headers={"User-Agent": "MarcoTeoricoApp/5.9"})
+        r = requests.get(
+            f"{OPENALEX}/works",
+            params=params,
+            timeout=10,
+            headers={"User-Agent": "MarcoTeoricoApp/7.0"},
+        )
         if r.status_code != 200:
             return []
         results = []
         for w in r.json().get("results", []):
             doi = (w.get("doi") or "").replace("https://doi.org/", "")
-            authors = [a["author"]["display_name"] for a in w.get("authorships", [])[:3] if a.get("author")]
+            authors = [
+                a["author"]["display_name"]
+                for a in w.get("authorships", [])[:3]
+                if a.get("author")
+            ]
             loc = w.get("primary_location") or {}
             venue = (loc.get("source") or {}).get("display_name", "")
             inv = w.get("abstract_inverted_index") or {}
@@ -129,32 +344,53 @@ def openalex_search(query: str, variables: str, year_from: int, max_results: int
             if inv:
                 pos = sorted((p, wd) for wd, pl in inv.items() for p in pl)
                 abstract = " ".join(wd for _, wd in pos[:80])
-            results.append({"id": f"OA_{len(results)+1}", "source": "OpenAlex",
-                "title": w.get("title",""), "year": w.get("publication_year"),
-                "authors": authors, "venue": venue, "doi": doi, "abstract": abstract,
+            results.append({
+                "id": f"OA_{len(results)+1}",
+                "source": "OpenAlex",
+                "title": w.get("title", ""),
+                "year": w.get("publication_year"),
+                "authors": authors,
+                "venue": venue,
+                "doi": doi,
+                "abstract": abstract,
                 "open_access": (w.get("open_access") or {}).get("is_oa", False),
-                "verified_by": [], "quality_flags": {}})
+                "verified_by": [],
+                "quality_flags": {},
+            })
         return results
     except Exception:
         return []
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def s2_search(query: str, variables: str, max_results: int = 8) -> List[Dict]:
+    """Semantic Scholar: busca con traduccion EN automatica."""
     try:
-        r = requests.get(f"{S2}/paper/search",
-            params={"query": f"{query} {variables}", "limit": max_results, "fields": S2_FIELDS},
-            timeout=10)
+        query_en = translate_query(query)
+        search_term = query_en if query_en != query else query
+        r = requests.get(
+            f"{S2}/paper/search",
+            params={"query": search_term, "limit": max_results, "fields": S2_FIELDS},
+            timeout=10,
+        )
         if r.status_code != 200:
             return []
         results = []
         for p in r.json().get("data", []):
             doi = (p.get("externalIds") or {}).get("DOI", "")
-            authors = [a.get("name","") for a in p.get("authors",[])[:3]]
-            results.append({"id": f"S2_{len(results)+1}", "source": "SemanticScholar",
-                "title": p.get("title",""), "year": p.get("year"),
-                "authors": authors, "venue": p.get("venue",""), "doi": doi,
+            authors = [a.get("name", "") for a in p.get("authors", [])[:3]]
+            results.append({
+                "id": f"S2_{len(results)+1}",
+                "source": "SemanticScholar",
+                "title": p.get("title", ""),
+                "year": p.get("year"),
+                "authors": authors,
+                "venue": p.get("venue", ""),
+                "doi": doi,
                 "abstract": (p.get("abstract") or "")[:500],
-                "open_access": False, "verified_by": [], "quality_flags": {}})
+                "open_access": False,
+                "verified_by": [],
+                "quality_flags": {},
+            })
         return results
     except Exception:
         return []
@@ -237,7 +473,7 @@ def generar_docx(texto: str) -> io.BytesIO:
     return buf
 
 SYSTEM_PROMPT = (
-    "AGENTE: CONSTRUCTOR DE MARCO TEORICO v6.0 (P-6)\n"
+    "AGENTE: CONSTRUCTOR DE MARCO TEORICO v7.0 (P-7)\n"
     "Eres un AGENTE ACADEMICO DE ALTO RIGOR DOCTORAL.\n\n"
     "0. DECISION DE MODO\n"
     "- Gate global cumplido: Si/No\n"
@@ -298,7 +534,7 @@ SYSTEM_PROMPT = (
 # ===================================================
 with st.sidebar:
     st.markdown("## Constructor de Marco Teorico")
-    st.markdown("**v6.0.0 - P-6 - Modo B Doctoral**")
+    st.markdown("**v7.0.0 - P-7 - Queries VI/VD + Fallback**")
     st.markdown("---")
 
     st.markdown("### 1. Configuracion")
@@ -382,7 +618,7 @@ st.markdown(
       <div class="badge-row">
         <span class="badge">Claude</span><span class="badge">OpenAlex</span>
         <span class="badge">SemanticScholar</span><span class="badge">Crossref</span>
-        <span class="badge">v5.9.0</span>
+        <span class="badge">v7.0.0</span>
       </div>
     </div>''', unsafe_allow_html=True)
 
@@ -392,7 +628,7 @@ with col1:
 with col2:
     st.markdown('<div class="info-box"><b>VI / VD separadas</b><br>Seccion 3 dedicada a variables clave.</div>', unsafe_allow_html=True)
 with col3:
-    st.markdown('<div class="info-box"><b>Recuperacion con sliders</b><br>Controla ano y cantidad de fuentes.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-box"><b>Queries VI/VD + Fallback</b><br>Busca en 3 APIs con traduccion EN.</div>', unsafe_allow_html=True)
 st.markdown('<div class="warning-box"><b>Flujo:</b> Llena secciones 1-4 → Recuperar fuentes (Sec. 5) → Generar Marco (Sec. 6).</div>', unsafe_allow_html=True)
 
 if "fuentes_recuperadas" not in st.session_state:
@@ -406,46 +642,81 @@ if recuperar:
     if not (titulo or vi or vd):
         st.warning("Ingresa Titulo o Variables (secciones 2-3) para buscar fuentes.")
     else:
-        query = titulo or f"{vi} {vd}"
-        with st.spinner("Buscando fuentes en OpenAlex y SemanticScholar..."):
+        # P-7: queries especificas por VI/VD con traduccion automatica
+        queries = build_queries(vi, vd, titulo, area)
+        with st.spinner(f"Buscando con {len(queries)} queries en OpenAlex + Crossref + S2..."):
             pb = st.progress(0)
-            max_oa = max(5, max_fuentes // 2)
-            max_s2 = max(5, max_fuentes - max_oa)
-            oa_r = openalex_search(query, variables_cats, anio_desde, max_oa)
-            pb.progress(0.35)
-            s2_r = s2_search(query, variables_cats, max_s2)
-            pb.progress(0.6)
-            all_raw = oa_r + s2_r
+            all_raw: List[Dict] = []
+            step = 0.8 / max(len(queries), 1)
+
+            for i, q in enumerate(queries):
+                max_per_src = max(3, max_fuentes // (len(queries) * 2))
+                oa_r = openalex_search(q, variables_cats, anio_desde, max_per_src)
+                all_raw.extend(oa_r)
+                pb.progress(min((i + 0.4) * step, 0.75))
+
+                cr_r = crossref_search(q, anio_desde, max_per_src)
+                all_raw.extend(cr_r)
+
+                s2_r = s2_search(q, variables_cats, max_per_src)
+                all_raw.extend(s2_r)
+                pb.progress(min((i + 1) * step, 0.8))
+
+            # Fallback: si no retorna nada con queries especificas, usar titulo
+            if not all_raw and titulo:
+                st.info("Fallback activado: buscando con titulo completo...")
+                all_raw.extend(openalex_search(titulo, "", anio_desde, max_fuentes))
+                all_raw.extend(crossref_search(titulo, anio_desde, max_fuentes // 2))
+                all_raw.extend(s2_search(titulo, "", max_fuentes // 2))
+
+            pb.progress(0.82)
             all_dedup = dedup_records(all_raw)
-            pb.progress(0.75)
+            pb.progress(0.88)
             verified = verify_records_concurrent(all_dedup, progress_bar=pb)
             pb.progress(1.0)
+
         st.session_state["fuentes_recuperadas"] = all_dedup
         st.session_state["fuentes_verificadas"] = verified
+
         if all_dedup:
             lineas = []
-            for r in all_dedup[:max_fuentes]:
-                authors_str = "; ".join(r.get("authors") or [])
-                v_tag = "VERIFICADA" if r in verified else "NO_VERIFICADA"
+            for rec in all_dedup[:max_fuentes]:
+                authors_str = "; ".join(rec.get("authors") or [])
+                v_tag = "VERIFICADA" if rec in verified else "NO_VERIFICADA"
+                tipo = classify_source(rec, anio_desde)
                 lineas.append(
-                    f"[ID={r['id']}|Base={r['source']}|Autor={authors_str}|"
-                    f"Anio={r.get('year','')}|Titulo={r.get('title','')}|"
-                    f"Revista={r.get('venue','')}|DOI={r.get('doi') or 'sin-doi'}|"
-                    f"Verificacion={v_tag}|Extracto={r.get('abstract','')[:200]}]"
+                    f"[ID={rec['id']}|Base={rec['source']}|Tipo={tipo}|"
+                    f"Autor={authors_str}|Anio={rec.get('year','')}|"
+                    f"Titulo={rec.get('title','')}|Revista={rec.get('venue','')}|"
+                    f"DOI={rec.get('doi') or 'sin-doi'}|Verificacion={v_tag}|"
+                    f"Extracto={rec.get('abstract','')[:200]}]"
                 )
             st.session_state["fuentes_bloque_auto"] = (
-                "\n<<<FUENTES_AUTOMATICAS>>>\n" + "\n".join(lineas)
-                + "\n<<<FIN_FUENTES_AUTOMATICAS>>>"
+                "\n<<<FUENTES_AUTOMATICAS>>>\n" + "\n".join(lineas) + "\n<<<FIN_FUENTES_AUTOMATICAS>>>"
             )
-            st.success(f"Recuperadas: {len(all_dedup)} | Verificadas con DOI+Crossref: {len(verified)}")
-            with st.expander(f"Ver {len(all_dedup)} fuentes recuperadas", expanded=False):
-                for r in all_dedup[:max_fuentes]:
-                    v_icon = "VERIFICADA" if r in verified else "no verificada"
-                    authors_str = "; ".join(r.get("authors") or []) or "s/a"
-                    st.markdown(f"**{r.get('title','Sin titulo')}**")
-                    st.caption(f"{authors_str} ({r.get('year','?')}) | {r.get('venue','s/r')} | DOI: {r.get('doi') or '---'} | {v_icon}")
+            empiricas = sum(1 for r in all_dedup[:max_fuentes] if classify_source(r, anio_desde) == "empirica")
+            teoricas  = sum(1 for r in all_dedup[:max_fuentes] if classify_source(r, anio_desde) == "teorica")
+            conceptuales = len(all_dedup[:max_fuentes]) - empiricas - teoricas
+            st.success(
+                f"Recuperadas: {len(all_dedup)} | Verificadas: {len(verified)} | "
+                f"Empiricas: {empiricas} | Teoricas: {teoricas} | Conceptuales: {conceptuales}"
+            )
+            with st.expander(f"Ver {min(len(all_dedup), max_fuentes)} fuentes recuperadas", expanded=False):
+                for rec in all_dedup[:max_fuentes]:
+                    v_icon = "✅ VERIFICADA" if rec in verified else "⚠️ no verificada"
+                    tipo_icon = {"empirica": "🔬", "teorica": "📚", "conceptual": "💡"}.get(
+                        classify_source(rec, anio_desde), "📄"
+                    )
+                    authors_str = "; ".join(rec.get("authors") or []) or "s/a"
+                    st.markdown(f"{tipo_icon} **{rec.get('title','Sin titulo')}**")
+                    st.caption(
+                        f"{authors_str} ({rec.get('year','?')}) | {rec.get('venue','s/r')} | "
+                        f"DOI: {rec.get('doi') or '---'} | {v_icon} | {rec['source']}"
+                    )
         else:
-            st.info("No se encontraron fuentes. Intenta con terminos diferentes.")
+            st.warning("No se encontraron fuentes con ninguna query. Verifica las variables o prueba con terminos mas generales.")
+
+
 elif st.session_state["fuentes_recuperadas"]:
     total = len(st.session_state["fuentes_recuperadas"])
     verif = len(st.session_state["fuentes_verificadas"])
@@ -527,6 +798,6 @@ if generar:
 
 st.markdown("---")
 st.markdown(
-    f'''<footer>Powered by Claude v6.0.0 | P-6 Modo B Doctoral | OpenAlex + S2 + Crossref | Rango: {RANGO} | Gate activo</footer>''',
+    f'''<footer>Powered by Claude v7.0.0 | P-7 Queries VI/VD + Fallback | OpenAlex + Crossref + S2 | Rango: {RANGO} | Gate activo</footer>''',
     unsafe_allow_html=True,
 )
