@@ -1,4 +1,4 @@
-# app.py -- Constructor de Marco Teorico v7.0.0 (P-7: queries VI/VD + fallback + clasificador)
+# app.py -- Constructor de Marco Teorico v7.1.0 (P-7 + Fix1: keyword filter + Fix2: noise filter + Fix3: DOI GET verification)
 # Sidebar reestructurado: 6 secciones + boton Recuperar separado
 
 import io
@@ -97,6 +97,39 @@ def is_valid_doi(doi: str) -> bool:
         return False
     d = doi.strip().lower()
     return d.startswith("10.") and "/" in d
+
+# ===== FIX 1: Filtro de keywords irrelevantes por disciplina =====
+_IRRELEVANT_KEYWORDS = [
+    "matemáticas", "matematicas", "física", "fisica",
+    "conducta", "tea", "instagram",
+]
+
+def is_relevant_record(record):
+    """Retorna False si el titulo o abstract contiene keywords irrelevantes."""
+    text = (
+        (record.get("title") or "") + " " + (record.get("abstract") or "")
+    ).lower()
+    for kw in _IRRELEVANT_KEYWORDS:
+        if kw in text:
+            return False
+    return True
+
+# ===== FIX 2: Excluir titulos <4 palabras o tipo book-section =====
+def is_noise_record(record):
+    """Retorna True si el registro es ruido bibliografico."""
+    title = (record.get("title") or "").strip()
+    word_count = len(title.split())
+    if word_count < 4:
+        return True
+    pub_types = record.get("publication_types") or record.get("publicationTypes") or []
+    if isinstance(pub_types, list):
+        for pt in pub_types:
+            if isinstance(pt, str) and "book-section" in pt.lower():
+                return True
+    elif isinstance(pub_types, str):
+        if "book-section" in pub_types.lower():
+            return True
+    return False
 
 
 # ===== P-7: Traduccion, Queries especificas, Clasificador, Fallback =====
@@ -304,7 +337,25 @@ def crossref_search(query: str, year_from: int, max_results: int = 8) -> List[Di
 @st.cache_data(ttl=3600, show_spinner=False)
 def crossref_ok(doi: str) -> bool:
     try:
-        r = requests.get(f"{CROSSREF}/works/{doi.strip()}", timeout=8, headers={"User-Agent": "MarcoTeoricoApp/5.9"})
+        r = requests.get(f"{CROSSREF}/works/{doi.strip()}", timeout=8, headers={"User-Agent": "MarcoTeoricoApp/7.0"})
+        return r.status_code == 200
+    except Exception:
+        return False
+
+# ===== FIX 3: Verificacion de DOI via GET directo =====
+@st.cache_data(ttl=3600, show_spinner=False)
+def doi_verified(doi: str) -> bool:
+    """Hace GET al DOI resolver (doi.org). Marca VERIFICADA solo si responde HTTP 200."""
+    if not doi or not is_valid_doi(doi):
+        return False
+    doi_clean = doi.strip().lstrip("https://doi.org/").lstrip("http://doi.org/")
+    try:
+        r = requests.get(
+            f"https://doi.org/{doi_clean}",
+            timeout=10,
+            allow_redirects=True,
+            headers={"User-Agent": "MarcoTeoricoApp/7.0", "Accept": "application/json"},
+        )
         return r.status_code == 200
     except Exception:
         return False
@@ -412,8 +463,11 @@ def verify_records_concurrent(records: List[Dict], progress_bar=None) -> List[Di
     verified = []
     def _check(rec: Dict) -> Tuple[bool, Dict]:
         doi = rec.get("doi")
-        ok = bool(doi and is_valid_doi(doi) and crossref_ok(doi))
-        rec["verified_by"] = ["Crossref"] if ok else []
+        # FIX 3: GET al DOI - VERIFICADA solo si responde 200
+        doi_ok = bool(doi and is_valid_doi(doi) and doi_verified(doi))
+        crossref_ok_flag = bool(doi and is_valid_doi(doi) and crossref_ok(doi))
+        ok = doi_ok or crossref_ok_flag
+        rec["verified_by"] = ["DOI-Verificado"] if doi_ok else (["Crossref"] if crossref_ok_flag else [])
         rec["quality_flags"]["has_doi"] = bool(doi)
         rec["quality_flags"]["has_venue"] = bool(rec.get("venue"))
         rec["quality_flags"]["has_year"] = bool(rec.get("year"))
@@ -534,7 +588,7 @@ SYSTEM_PROMPT = (
 # ===================================================
 with st.sidebar:
     st.markdown("## Constructor de Marco Teorico")
-    st.markdown("**v7.0.0 - P-7 - Queries VI/VD + Fallback**")
+    st.markdown("**v7.1.0 - Fix1: Keywords | Fix2: Ruido | Fix3: DOI verificado**")
     st.markdown("---")
 
     st.markdown("### 1. Configuracion")
@@ -671,6 +725,10 @@ if recuperar:
 
             pb.progress(0.82)
             all_dedup = dedup_records(all_raw)
+        # FIX 1: Excluir fuentes con keywords irrelevantes
+        all_dedup = [r for r in all_dedup if is_relevant_record(r)]
+        # FIX 2: Excluir ruido bibliografico (titulo <4 palabras o book-section)
+        all_dedup = [r for r in all_dedup if not is_noise_record(r)]
             pb.progress(0.88)
             verified = verify_records_concurrent(all_dedup, progress_bar=pb)
             pb.progress(1.0)
@@ -798,6 +856,6 @@ if generar:
 
 st.markdown("---")
 st.markdown(
-    f'''<footer>Powered by Claude v7.0.0 | P-7 Queries VI/VD + Fallback | OpenAlex + Crossref + S2 | Rango: {RANGO} | Gate activo</footer>''',
+    f'''<footer>Powered by Claude v7.1.0 | Fix1 Keywords + Fix2 Ruido + Fix3 DOI-GET | OpenAlex + Crossref + S2 | Rango: {RANGO} | Gate activo</footer>''',
     unsafe_allow_html=True,
 )
