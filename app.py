@@ -3,41 +3,15 @@
 
 import io
 import re
-import html
+import markdown
 
 def md_to_html(text: str) -> str:
-    """Convierte markdown a HTML compacto para mostrar en result-container."""
-    import re as _re
-    # Colapsar 3+ saltos de linea consecutivos a 2
-    text = _re.sub(r'\n{3,}', '\n\n', text)
-    lines = text.split('\n')
-    out = []
-    for line in lines:
-        s = line.strip()
-        if not s:
-            # linea vacia: solo agrega separador si la anterior no fue vacia
-            if out and out[-1] != '':
-                out.append('')
-            continue
-        # Encabezados ## -> h2, ### -> h3, # -> h2
-        if _re.match(r'^### ', s):
-            s = '<h3>' + html.escape(s[4:]) + '</h3>'
-        elif _re.match(r'^## ', s):
-            s = '<h2>' + html.escape(s[3:]) + '</h2>'
-        elif _re.match(r'^# ', s):
-            s = '<h2>' + html.escape(s[2:]) + '</h2>'
-        else:
-            # Escapar y formatear inline
-            s = html.escape(s)
-            # **negrita**
-            s = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', s)
-            # *italica*
-            s = _re.sub(r'\*(.+?)\*', r'<em>\1</em>', s)
-            # Lineas normales como parrafo
-            s = '<p>' + s + '</p>'
-        out.append(s)
-    # Unir sin saltos extra
-    return '\n'.join(out)
+    """Convierte markdown a HTML usando la libreria markdown con soporte de tablas."""
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return markdown.markdown(
+        text,
+        extensions=['tables', 'fenced_code'],
+    )
 import math
 import os
 from datetime import datetime
