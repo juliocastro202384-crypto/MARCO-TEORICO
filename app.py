@@ -522,30 +522,87 @@ def dedup_records(records: List[Dict]) -> List[Dict]:
         out.append(r)
     return out
 
-def generar_docx(texto: str) -> io.BytesIO:
-    from docx.shared import Pt, Cm
-    from docx.oxml.ns import qn
-    from docx.oxml import OxmlElement
+def generar_docx(texto: str, titulo: str = "", autor: str = "",
+                  institucion: str = "", documento: str = "Tesis",
+                  ruta: str = "", norma: str = "APA 7") -> io.BytesIO:
+    from docx.shared import Pt, Cm, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     doc = Document()
 
-    # Márgenes APA 2.5cm
+    # ── Márgenes APA 2.5cm ──
     for section in doc.sections:
         section.top_margin    = Cm(2.5)
         section.bottom_margin = Cm(2.5)
         section.left_margin   = Cm(2.5)
         section.right_margin  = Cm(2.5)
 
-    # Estilo Normal: Times New Roman 12pt, doble espacio
+    # ── Estilo Normal base ──
     style = doc.styles['Normal']
     style.font.name = 'Times New Roman'
     style.font.size = Pt(12)
     style.paragraph_format.line_spacing = Pt(24)
     style.paragraph_format.space_after  = Pt(0)
 
-    doc.add_heading("Marco Teórico", 0)
+    # ════════════════════════════════
+    # CARÁTULA TIPO TESIS
+    # ════════════════════════════════
+    def _par(text, bold=False, size=12, align=WD_ALIGN_PARAGRAPH.CENTER, space_before=0):
+        p = doc.add_paragraph()
+        p.alignment = align
+        p.paragraph_format.space_before = Pt(space_before)
+        p.paragraph_format.space_after  = Pt(0)
+        p.paragraph_format.line_spacing = Pt(24)
+        run = p.add_run(text)
+        run.bold = bold
+        run.font.name = 'Times New Roman'
+        run.font.size = Pt(size)
+        return p
 
-    en_s13 = False  # flag para sección de referencias
+    if institucion:
+        _par(institucion.upper(), bold=True, size=13, space_before=12)
+        _par("", size=12)
+
+    _par("FACULTAD DE POSGRADO" if "maestria" in documento.lower() or "doctoral" in documento.lower() else "FACULTAD", size=12)
+    _par("", size=12)
+
+    # Título centrado en negrita
+    titulo_display = titulo.upper() if titulo else "MARCO TEÓRICO"
+    _par(titulo_display, bold=True, size=14, space_before=24)
+    _par("", size=12)
+
+    # Tipo de documento
+    tipo_map = {
+        "Tesis de maestria":  "Tesis presentada como requisito para optar al grado de\nMagíster",
+        "Tesis doctoral":     "Tesis presentada como requisito para optar al grado de\nDoctor en Ciencias",
+        "TFM":                "Trabajo Final de Máster",
+        "Trabajo de pregrado":"Trabajo de Grado presentado como requisito parcial\npara optar al título de Licenciado",
+        "Articulo cientifico":"Artículo Científico",
+    }
+    tipo_texto = tipo_map.get(documento, documento)
+    for linea in tipo_texto.split("\n"):
+        _par(linea, size=12, space_before=6)
+
+    _par("", size=12)
+    if autor:
+        _par("Autor:", bold=False, size=12, space_before=18)
+        _par(autor, bold=True, size=12)
+
+    _par("", size=12)
+    if ruta:
+        _par(f"Línea de investigación: {ruta}", size=11, space_before=6)
+
+    from datetime import datetime as _dt
+    _par("", size=12)
+    _par(str(_dt.now().year), size=12, space_before=36)
+
+    # Salto de página después de carátula
+    doc.add_page_break()
+
+    # ════════════════════════════════
+    # CUERPO DEL MARCO TEÓRICO
+    # ════════════════════════════════
+    en_s13 = False
 
     for linea in texto.split("\n"):
         s = linea.strip()
@@ -562,17 +619,18 @@ def generar_docx(texto: str) -> io.BytesIO:
             h.style.font.name = 'Times New Roman'
             h.style.font.size = Pt(12)
         elif en_s13 and re.match(r'^[A-ZÁÉÍÓÚÑ]', s):
+            # Referencia APA: sangría francesa
             p = doc.add_paragraph(s)
-            p.style.font.name = 'Times New Roman'
-            p.style.font.size = Pt(12)
-            p.paragraph_format.left_indent         = Cm(1.25)
-            p.paragraph_format.first_line_indent   = Cm(-1.25)
-            p.paragraph_format.line_spacing        = Pt(24)
-            p.paragraph_format.space_after         = Pt(0)
+            p.style.font.name  = 'Times New Roman'
+            p.style.font.size  = Pt(12)
+            p.paragraph_format.left_indent       = Cm(1.25)
+            p.paragraph_format.first_line_indent = Cm(-1.25)
+            p.paragraph_format.line_spacing      = Pt(24)
+            p.paragraph_format.space_after       = Pt(0)
         else:
             p = doc.add_paragraph(s)
-            p.style.font.name = 'Times New Roman'
-            p.style.font.size = Pt(12)
+            p.style.font.name  = 'Times New Roman'
+            p.style.font.size  = Pt(12)
             p.paragraph_format.first_line_indent = Cm(1.25)
             p.paragraph_format.line_spacing      = Pt(24)
             p.paragraph_format.space_after       = Pt(0)
@@ -703,6 +761,8 @@ with st.sidebar:
     obj_esp = st.text_area("Objetivos especificos (uno por linea)", height=90, placeholder=_ph_obj)
     preguntas = st.text_area("Preguntas de investigacion", height=70,
         placeholder="Cual es...? / Como...? / Que relacion...?")
+    autor = st.text_input("Autor / Estudiante", placeholder="Ej: García López, Juan Carlos")
+    institucion = st.text_input("Universidad / Institución", placeholder="Ej: Universidad Nacional Autónoma de México")
     ruta = st.selectbox("Ruta metodologica",
         ["Cuantitativa", "Cualitativa", "Mixta", "Por determinar"])
     poblacion = st.text_input("Poblacion / Muestra / Contexto",
@@ -960,7 +1020,15 @@ if generar:
                 unsafe_allow_html=True,
             )
             nombre_archivo = f"marco_teorico_{titulo[:30].replace(' ', '_') if titulo else 'estudio'}.docx"
-            docx_bytes = generar_docx(contenido)
+            docx_bytes = generar_docx(
+                contenido,
+                titulo=titulo,
+                autor=autor,
+                institucion=institucion,
+                documento=documento,
+                ruta=ruta,
+                norma=norma,
+            )
             st.download_button(
                 label="⬇️ Descargar Marco Teórico completo (.docx)",
                 data=docx_bytes,
