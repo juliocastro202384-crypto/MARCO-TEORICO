@@ -545,21 +545,37 @@ def generar_docx(texto: str) -> io.BytesIO:
 
     doc.add_heading("Marco Teórico", 0)
 
+    en_s13 = False  # flag para sección de referencias
+
     for linea in texto.split("\n"):
         s = linea.strip()
         if not s:
             continue
+        if re.search(r'S13[:\s]', s, re.IGNORECASE) or 'REFERENCIAS APA' in s.upper():
+            en_s13 = True
+        if re.match(r'^#{1,4}\s', s) and en_s13 and not re.search(r'S13', s, re.IGNORECASE):
+            en_s13 = False
+
         if re.match(r"^#{1,2}\s", s):
             nivel = 1 if s.startswith("# ") else 2
             h = doc.add_heading(re.sub(r"^#+\s+", "", s), level=nivel)
             h.style.font.name = 'Times New Roman'
             h.style.font.size = Pt(12)
+        elif en_s13 and re.match(r'^[A-ZÁÉÍÓÚÑ]', s):
+            p = doc.add_paragraph(s)
+            p.style.font.name = 'Times New Roman'
+            p.style.font.size = Pt(12)
+            p.paragraph_format.left_indent         = Cm(1.25)
+            p.paragraph_format.first_line_indent   = Cm(-1.25)
+            p.paragraph_format.line_spacing        = Pt(24)
+            p.paragraph_format.space_after         = Pt(0)
         else:
             p = doc.add_paragraph(s)
             p.style.font.name = 'Times New Roman'
             p.style.font.size = Pt(12)
             p.paragraph_format.first_line_indent = Cm(1.25)
             p.paragraph_format.line_spacing      = Pt(24)
+            p.paragraph_format.space_after       = Pt(0)
 
     buf = io.BytesIO()
     doc.save(buf)
@@ -911,18 +927,22 @@ if generar:
             st.success("✅ S0–S6 listos")
 
             # Paso 2/2: S7-S14
+            prompt_2 = (
+                f"{SYSTEM_PROMPT}\n\n"
+                f"VARIABLES: {variables_cats}\n\n"
+                f"FUENTES VERIFICADAS: {fuentes_para_prompt}\n\n"
+                "CONTEXTO: S0-S6 ya fueron generados.\n"
+                "INSTRUCCIÓN: Genera ÚNICAMENTE S7 hasta S14.\n"
+                "Empieza con ## S7. No repitas secciones anteriores.\n"
+                "S13 OBLIGATORIO: incluye TODAS las fuentes citadas en S6, S7 y S8 "
+                "en formato APA 7 completo. PROHIBIDO omitir ninguna referencia citada."
+            )
             parte_2 = ""
             with st.spinner("⏳ Paso 2/2 — Generando S7 a S14..."):
                 with client.messages.stream(
                     model=modelo,
                     max_tokens=6000,
-                    messages=[{"role": "user", "content": (
-                        f"{SYSTEM_PROMPT}\n\nVARIABLES: {variables_cats}"
-                        f"\n\nFUENTES VERIFICADAS: {fuentes_para_prompt}"
-                        "\n\nINSTRUCCION: Las secciones S0-S6 ya fueron generadas. "
-                        "Genera UNICAMENTE desde S7 hasta S14. "
-                        "Empieza directamente con ## S7 sin repetir nada anterior."
-                    )}],
+                    messages=[{"role": "user", "content": prompt_2}],
                 ) as stream:
                     for chunk in stream.text_stream:
                         parte_2 += chunk
