@@ -661,7 +661,7 @@ Termina exactamente al cerrar S6. No escribas S7 ni ninguna seccion posterior.
     parte_1 = ""
     with client.messages.stream(
         model=modelo,
-        max_tokens=6000,
+        max_tokens=8192,
         messages=[{"role": "user", "content": prompt_1}],
     ) as stream:
         for chunk in stream.text_stream:
@@ -1007,7 +1007,7 @@ if generar:
             with st.spinner("⏳ Paso 2/2 — Generando S7 a S14..."):
                 with client.messages.stream(
                     model=modelo,
-                    max_tokens=6000,
+                    max_tokens=8192,
                     messages=[{"role": "user", "content": prompt_2}],
                 ) as stream:
                     for chunk in stream.text_stream:
@@ -1019,8 +1019,31 @@ if generar:
                         )
             st.success("✅ S7–S14 listos")
 
+            # Paso 3/3: S13 Referencias garantizadas
+            parte_3 = ""
+            with st.spinner("⏳ Paso 3/3 — Generando S13 Referencias APA..."):
+                prompt_3 = (
+                    f"{SYSTEM_PROMPT}\n\n"
+                    f"VARIABLES: {variables_cats}\n\n"
+                    f"FUENTES VERIFICADAS: {fuentes_para_prompt}\n\n"
+                    "TAREA ÚNICA: Genera SOLAMENTE ## S13: REFERENCIAS APA 7\n"
+                    "Lista COMPLETA alfabética de TODAS las fuentes citadas.\n"
+                    "Formato artículo: Apellido, I. (Año). Título. Revista, vol(núm), pp. doi\n"
+                    "Formato libro: Apellido, I. (Año). Título. Editorial.\n"
+                    "PROHIBIDO inventar fuentes. PROHIBIDO omitir fuentes citadas.\n"
+                    "Empieza con: ## S13: REFERENCIAS APA 7"
+                )
+                with client.messages.stream(
+                    model=modelo,
+                    max_tokens=4096,
+                    messages=[{"role": "user", "content": prompt_3}],
+                ) as stream:
+                    for chunk in stream.text_stream:
+                        parte_3 += chunk
+            st.success("✅ S13 Referencias listas")
+
             # Resultado final
-            contenido = parte_1 + "\n\n" + parte_2
+            contenido = parte_1 + "\n\n" + parte_2 + "\n\n" + parte_3
             result_area.markdown(
                 f"<div class='result-container'>{md_to_html(contenido)}</div>",
                 unsafe_allow_html=True,
