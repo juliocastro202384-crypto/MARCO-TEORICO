@@ -639,7 +639,7 @@ def generar_docx(texto: str, titulo: str = "", autor: str = "",
     doc.save(buf)
     buf.seek(0)
     return buf
-def generar_marco_completo(variables, fuentes, system_prompt, client, modelo, result_area):
+def generar_marco_completo(variables, fuentes, system_prompt, client, modelo, result_area, documento="Tesis de maestria"):
     """Llamada 1/2: genera S0-S6 con streaming. Retorna el texto completo."""
 
     # ══ LLAMADA 1: S0 al S6 ══
@@ -650,7 +650,11 @@ VARIABLES: {variables}
 
 FUENTES VERIFICADAS: {fuentes}
 
-INSTRUCCION: Genera UNICAMENTE las secciones S0, S1, S2, S3, S4, S5 y S6.
+TIPO DE DOCUMENTO: {documento}
+INSTRUCCION CRITICA: En S0 y en todos los encabezados usa SIEMPRE el termino exacto del TIPO DE DOCUMENTO.
+NUNCA escribas "REDACCION DOCTORAL" si el documento es Tesis de maestria, TFM o Trabajo de pregrado.
+Usa: "MODO B - REDACCION {documento.upper()}" o simplemente "MODO B - GENERACION DEL MARCO TEORICO".
+Genera UNICAMENTE las secciones S0, S1, S2, S3, S4, S5 y S6.
 Termina exactamente al cerrar S6. No escribas S7 ni ninguna seccion posterior.
 """
 
@@ -982,7 +986,7 @@ if generar:
             with st.spinner("⏳ Paso 1/2 — Generando S0 a S6..."):
                 parte_1 = generar_marco_completo(
                     variables_cats, fuentes_para_prompt, SYSTEM_PROMPT,
-                    client, modelo, result_area,
+                    client, modelo, result_area, documento,
                 )
             st.success("✅ S0–S6 listos")
 
@@ -991,9 +995,11 @@ if generar:
                 f"{SYSTEM_PROMPT}\n\n"
                 f"VARIABLES: {variables_cats}\n\n"
                 f"FUENTES VERIFICADAS: {fuentes_para_prompt}\n\n"
+                f"TIPO DE DOCUMENTO: {documento}\n"
                 "CONTEXTO: S0-S6 ya fueron generados.\n"
                 "INSTRUCCIÓN: Genera ÚNICAMENTE S7 hasta S14.\n"
                 "Empieza con ## S7. No repitas secciones anteriores.\n"
+                "NUNCA uses el titulo REDACCION DOCTORAL si el documento no es doctoral.\n"
                 "S13 OBLIGATORIO: incluye TODAS las fuentes citadas en S6, S7 y S8 "
                 "en formato APA 7 completo. PROHIBIDO omitir ninguna referencia citada."
             )
