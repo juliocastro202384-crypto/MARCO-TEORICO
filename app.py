@@ -8,7 +8,7 @@ import markdown
 def md_to_html(text: str) -> str:
     """Convierte markdown a HTML usando la libreria markdown con soporte de tablas."""
     text = re.sub(r'\n{3,}', '\n\n', text)
-    return markdown.markdown
+    return markdown.markdown(
         text,
         extensions=['tables', 'fenced_code'],
     )
