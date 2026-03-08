@@ -523,25 +523,48 @@ def dedup_records(records: List[Dict]) -> List[Dict]:
     return out
 
 def generar_docx(texto: str) -> io.BytesIO:
+    from docx.shared import Pt, Cm
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
     doc = Document()
-    doc.add_heading("Marco Teorico", 0)
+
+    # Márgenes APA 2.5cm
+    for section in doc.sections:
+        section.top_margin    = Cm(2.5)
+        section.bottom_margin = Cm(2.5)
+        section.left_margin   = Cm(2.5)
+        section.right_margin  = Cm(2.5)
+
+    # Estilo Normal: Times New Roman 12pt, doble espacio
+    style = doc.styles['Normal']
+    style.font.name = 'Times New Roman'
+    style.font.size = Pt(12)
+    style.paragraph_format.line_spacing = Pt(24)
+    style.paragraph_format.space_after  = Pt(0)
+
+    doc.add_heading("Marco Teórico", 0)
+
     for linea in texto.split("\n"):
         s = linea.strip()
         if not s:
             continue
         if re.match(r"^#{1,2}\s", s):
-            doc.add_heading(re.sub(r"^#+\s+", "", s), level=1 if s.startswith("# ") else 2)
-        elif re.match(r"^(I{1,3}|IV|V?I{0,3}|IX|X)\. \S", s, re.I):
-            doc.add_heading(s, level=1)
-        elif re.match(r"^\d{1,2}\. [A-Z]", s):
-            doc.add_heading(s, level=2)
+            nivel = 1 if s.startswith("# ") else 2
+            h = doc.add_heading(re.sub(r"^#+\s+", "", s), level=nivel)
+            h.style.font.name = 'Times New Roman'
+            h.style.font.size = Pt(12)
         else:
-            doc.add_paragraph(s)
+            p = doc.add_paragraph(s)
+            p.style.font.name = 'Times New Roman'
+            p.style.font.size = Pt(12)
+            p.paragraph_format.first_line_indent = Cm(1.25)
+            p.paragraph_format.line_spacing      = Pt(24)
+
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
     return buf
-
 def generar_marco_completo(variables, fuentes, system_prompt, client, modelo, result_area):
     """Llamada 1/2: genera S0-S6 con streaming. Retorna el texto completo."""
 
