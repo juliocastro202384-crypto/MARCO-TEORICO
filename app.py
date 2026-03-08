@@ -1,4 +1,4 @@
-# app.py -- Constructor de Marco Teorico v7.2.0 (P-7 + Fix1: keyword filter + Fix2: noise filter + Fix3: DOI GET verification)
+# app.py -- Constructor de Marco Teorico v7.5.0 (P-7 + Fix1: keyword filter + Fix2: noise filter + Fix3: DOI GET verification)
 # Sidebar reestructurado: 6 secciones + boton Recuperar separado
 
 import io
@@ -635,7 +635,7 @@ SYSTEM_PROMPT = (
 # ===================================================
 with st.sidebar:
     st.markdown("## Constructor de Marco Teorico")
-    st.markdown("**v7.1.0 - Fix1: Keywords | Fix2: Ruido | Fix3: DOI verificado**")
+    st.markdown("**v7.5.0 - Fix1: Keywords | Fix2: Ruido | Fix3: DOI verificado**")
     st.markdown("---")
 
     st.markdown("### 1. Configuracion")
@@ -929,6 +929,6 @@ if generar:
 
 st.markdown("---")
 st.markdown(
-    f'''<footer>Powered by Claude v7.1.0 | Fix1 Keywords + Fix2 Ruido + Fix3 DOI-GET | OpenAlex + Crossref + S2 | Rango: {RANGO} | Gate activo</footer>''',
+    f'''<footer>Powered by Claude v7.5.0 | Fix1 Keywords + Fix2 Ruido + Fix3 DOI-GET | OpenAlex + Crossref + S2 | Rango: {RANGO} | Gate activo</footer>''',
     unsafe_allow_html=True,
 )
